@@ -1,0 +1,53 @@
+meta {
+  name: 5 Get auth clients in Registry
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query getAuthClients($paginationInput: PaginationInput!, $filter: AuthClientSearchFilterInput) {
+    getAuthClients(paginationInput: $paginationInput, filter: $filter) {
+      totalRecordCount
+      authClients {
+        clientId
+        clientVersion
+        type
+        redirectUrls
+        description
+        createUser
+        createTimestamp
+        teams {
+          name
+        }
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "paginationInput": {
+      "pageNumber": 1,
+      "pageSize": 20
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}
+
+docs {
+  Every OAuth client Registry owns, with the team each belongs to. Registry mirrors these into Registry Auth. The seeded `registry-user-pkce` is created in Auth by the seed migration; the guided bootstrap then registers it here and attaches it to the bootstrap team, so after bootstrap it appears in this list with `clientVersion: 1`.
+}

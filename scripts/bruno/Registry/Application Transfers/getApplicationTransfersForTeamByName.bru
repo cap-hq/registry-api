@@ -1,0 +1,53 @@
+meta {
+  name: getApplicationTransfersForTeamByName
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($teamName: String!) {
+    getApplicationTransfersForTeamByName(teamName: $teamName) {
+      id
+      status
+      comments
+      version
+      application {
+        id
+        name
+      }
+      sourceTeam {
+        id
+        name
+      }
+      receiveTeam {
+        id
+        name
+      }
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "teamName": "{{teamName}}"
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

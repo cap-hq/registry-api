@@ -1,0 +1,102 @@
+server:
+  servlet:
+    context-path: /auth
+  max-http-request-header-size: 80KB
+
+graphql:
+  spqr:
+    http:
+      endpoint: /graphql
+      mvc:
+        executor: blocking
+
+spring:
+  config:
+    import:
+      - classpath:/application-cloud.yml
+      - classpath:/application-jobs.yml
+      - classpath:/application-sign-in.yml
+      - classpath:/application-tokens.yml
+  jpa:
+    show-sql: false
+
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 2
+      maximum-pool-size: 10
+      max-lifetime: 1800000
+      pool-name: hikari-cp
+      connection-timeout: 30000
+      idle-timeout: 30000
+      keepalive-time: 1
+
+  flyway:
+    enabled: true
+    validateMigrationNaming: true
+    table: flyway_schema_history_v2
+    baseline-on-migrate: true
+    baseline-version: "1.2026.10.20"
+    outOfOrder: true
+    # Schema only. The greenfield seed (db/seed: registry-user-pkce client) is
+    # opt-in through the `bootstrap` profile -- see application-bootstrap.yml.
+    # No ignore-migration-patterns here, so Flyway's default (*:future) applies:
+    # an applied migration missing from the build fails validation, while one
+    # newer than the build (e.g. after a rollback) is ignored.
+    locations: classpath:db/migration
+
+logging:
+  level:
+    root: INFO
+    org.springframework.boot.autoconfigure.ssl.FileWatcher: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.session: INFO
+    org.springframework.security.oauth2: INFO
+
+jasypt:
+  encryptor:
+    bean: encryptorBean
+
+# registry-auth.api-secret (this service's X-Api-Secret, shared with the registry) is required, has no default,
+# and must not be blank
+
+# registry service, queried for JWT claims
+registry:
+  base-uri: ${REGISTRY_API_HOST:http://localhost:8100}/api/graphql
+  # api-secret is required and has no default; it is the registry's X-Api-Secret and must not be blank
+
+app:
+  cache:
+    default-ttl-in-minutes: 5
+    ttl-in-minutes:
+      jwks: 1
+
+  security:
+    # client_ids rejected at the token endpoint before any registered-client lookup.
+    # Override without a rebuild via APP_SECURITY_BLOCKED_CLIENT_IDS (comma separated).
+    # NOTE: a client id listed here stays blocked even if the auth client is later recreated --
+    # remove it from this list when the client is legitimately rebuilt.
+    blocked-client-ids: []
+
+  authentication:
+    log-success: false
+    event-claims-to-log: scope,iss,sid,tid
+    daily-timezone: America/New_York
+  ssl:
+    rotation:
+      create-legacy-key: false # whether to create a legacy signing key during rotation for existing tokens to continue working
+      legacy-cert-not-before-cutoff: 2026-05-19T00:00:00Z # cutoff date for considering existing certs as legacy for rotation purposes
+      evict-interval: PT60M  # interval for evicting old SSL contexts from the cache
+      metric-publish-interval: PT12H # interval for publishing SSL context cache metrics
+      key-grace-period: PT12H  # grace period after cert expiry before a signing key is evicted; should match max token TTL (refresh token)
+  async:
+    auth-event-executor:
+      core-pool-size: 2
+      max-pool-size: 10
+      queue-capacity: 500
+      await-termination-seconds: 10
+  admin:
+    authorized-teams: ""
+  metrics:
+    prefix: registry # namespace prefix prepended to OTEL meter and instrument names

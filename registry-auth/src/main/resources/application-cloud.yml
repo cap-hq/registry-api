@@ -1,0 +1,9 @@
+spring:
+  cloud:
+    gcp:
+      sql:
+        enabled: false
+        jdbc:
+          enabled: false
+        r2dbc:
+          enabled: false

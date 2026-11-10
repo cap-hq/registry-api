@@ -1,0 +1,54 @@
+meta {
+  name: updateApplication
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($application: ApplicationRequestInput!) {
+    updateApplication(application: $application) {
+      id
+      teamId
+      version
+      name
+      description
+      complianceTypes
+      priority
+      externalId
+      cloud
+      tenant
+      aiEnabled
+      dataPerimeter
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "application": {
+      "name": "{{applicationName}}",
+      "teamName": "{{teamName}}",
+      "description": "Updated from the Registry Bruno collection",
+      "priority": 2
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Bootstrap PKCE
+  seq: 3
+}
+
+auth {
+  mode: inherit
+}
+
+docs {
+  Companion to `bootstrap/bootstrap.sh` (does not run it). Runs as **you**, with the collection's PKCE
+  login (`registry-user-pkce`) — click *Get Access Token* on the collection first. Reads back what the
+  script did (your member record, the team, the `USER_PKCE` client it registered through Registry), then
+  optionally registers a demo client on that team the same way the script does.
+
+  Order: 3 → 4 → 5 → 6 → 7. Then:
+
+  * **8 Create client (via Registry GraphQL)** – registers `DEMO_CLIENT_ID` (default `registry-user`, a
+    confidential `USER` client) owned by `BOOTSTRAP_TEAM_NAME`; Registry mirrors it into Registry Auth and
+    returns `clientSecret` once — paste it into `DEMO_CLIENT_SECRET` for the Auth client-credentials calls.
+  * **10 Cleanup** – deletes the demo client through Registry (both sides). Never touches the bootstrap client.
+
+  Clients are never created directly against Registry Auth here; `bootstrap.sh` owns that path.
+
+  Configure in `.env`: `BOOTSTRAP_CLIENT_ID`, `BOOTSTRAP_TEAM_NAME` (what you gave the script);
+  `DEMO_CLIENT_ID`, `DEMO_CLIENT_NAME`, `DEMO_CLIENT_TYPE` (`USER` | `USER_PKCE` | `NON_USER`), `DEMO_REDIRECT_URL`.
+}

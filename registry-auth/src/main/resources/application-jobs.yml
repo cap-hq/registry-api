@@ -1,0 +1,13 @@
+app:
+  job:
+    auth-session-cleanup:
+      enabled: true
+      cron-expression: "@hourly"
+      job-lock-time: "30m"
+    auth-event-partition:
+      cron-expression: "0 0 6 * * *"  # 6:00 AM UTC — after EST (UTC-5) day boundary; covers both EST and EDT
+      job-lock-time: "10m"
+      retention-days: 7
+    client-auth-stats:
+      enabled: true
+      interval-ms: 60000

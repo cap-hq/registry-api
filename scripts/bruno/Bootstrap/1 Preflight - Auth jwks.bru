@@ -1,0 +1,17 @@
+meta {
+  name: 1 Preflight - Auth jwks
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{authUrl}}/oauth2/jwks
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

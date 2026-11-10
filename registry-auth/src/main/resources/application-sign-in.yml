@@ -1,0 +1,46 @@
+spring:
+  # User sign-in through Azure AD (Entra ID). Required: SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_ID,
+  # SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_SECRET, and spring.cloud.azure.profile.tenant-id
+  # (env SPRING_CLOUD_AZURE_PROFILE_TENANT_ID). The app registration must expose the App.User scope.
+  security:
+    oauth2:
+      client:
+        registration:
+          azure-idp:
+            provider: azure
+            client-id: ${SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_ID}
+            client-secret: ${SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_SECRET}
+            scope:
+              - api://${SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_ID}/App.User
+              - openid
+              - email
+              - profile
+            client-name: Sign in with Azure
+        provider:
+          azure:
+            user-name-attribute: name
+            issuer-uri: https://login.microsoftonline.com/${spring.cloud.azure.profile.tenant-id}/v2.0
+
+app:
+  login-processing-url: /auth/oauth2/authorization/azure-idp
+  oauth2:
+    retrieve-user-info: false
+  cors:
+    max-age: 3600
+    allowed-origin-patterns:   # set per environment
+      - http://localhost:*
+    allowed-methods:
+      - POST
+      - GET
+      - OPTIONS
+      - DELETE
+      - HEAD
+      - PUT
+    allowed-headers:
+      - Content-Type
+      - Accept
+      - X-Requested-With
+      - Authorization
+      - X-Api-Secret
+      - traceparent
+      - tracestate

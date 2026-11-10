@@ -1,0 +1,34 @@
+meta {
+  name: getJwks
+  type: graphql
+  seq: 5
+}
+
+post {
+  url: {{authUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query {
+    getJwks {
+      kid
+      kty
+      keyUse
+      alg
+      issuedAt
+      expiresAt
+      createdAt
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

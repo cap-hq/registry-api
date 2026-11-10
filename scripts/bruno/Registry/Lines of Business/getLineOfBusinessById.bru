@@ -1,0 +1,45 @@
+meta {
+  name: getLineOfBusinessById
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($id: Long!) {
+    getLineOfBusinessById(id: $id) {
+      id
+      version
+      name
+      description
+      managers {
+        managerExternalId
+        managerName
+      }
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "id": 1
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

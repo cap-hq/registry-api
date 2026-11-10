@@ -1,0 +1,163 @@
+// SPDX-FileCopyrightText: © 2026 CVS Health and/or one of its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+// Since Flyway 10 the Gradle plugin only finds database support on the buildscript classpath, not the
+// project's dependencies; without these, flyway* tasks fail with "No Flyway database plugin found".
+// Declared here because the plugin is loaded by this root project (apply false below), so a subproject
+// buildscript classpath is not visible to it.
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.flywaydb:flyway-database-postgresql:${flywayVersion}"
+        classpath "org.postgresql:postgresql:${postgreSQLVersion}"
+    }
+}
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version "${springBootVersion}" apply false
+    id 'jacoco'
+    id 'com.adarshr.test-logger' version "${testLoggerVersion}" apply false
+    id 'com.google.osdetector' version "${osdetectorVersion}" apply false
+    id 'org.flywaydb.flyway' version "${flywayVersion}" apply false
+}
+
+allprojects {
+    group = 'com.cvshealth.cap.registry'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'jacoco'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
+    }
+
+    tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+    tasks.withType(Javadoc).configureEach { options.encoding = 'UTF-8' }
+
+    // Centralized version enforcement — previously duplicated per-module with drifting targets
+    configurations.matching { cfg ->
+        cfg.name in ['compileClasspath', 'runtimeClasspath', 'testCompileClasspath', 'testRuntimeClasspath']
+    }.each { cfg ->
+        cfg.resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'io.netty' && !details.requested.name.startsWith('netty-tcnative')) {
+                details.useVersion nettyVersion
+                details.because 'Enforce consistent Netty version across all modules to avoid NoSuchMethodError from split classpath'
+            }
+            // Tomcat is deliberately not forced here: a hard pin (10.1.x) once silently downgraded
+            // Boot 4's Tomcat 11 below the Servlet 6.1 baseline. The CVE floor lives in the
+            // constraints block below so it can only ever raise the BOM version, never lower it.
+            if (details.requested.group.startsWith('tools.jackson')) {
+                details.useVersion jackson3Version
+                details.because 'CVE-2026-68497 (High): jackson-databind 3.x allocation without limits; keep all Jackson 3 artifacts in sync'
+            }
+            if (details.requested.group == 'com.fasterxml.jackson.core' && details.requested.name == 'jackson-databind') {
+                details.useVersion jackson2DatabindVersion
+                details.because 'CVE-2026-68497 (High) + CVE-2026-59889 (High) in jackson-databind 2.x (pulled transitively by SPQR / azure-core)'
+            }
+            if (details.requested.group == 'ch.qos.logback') {
+                details.useVersion logbackVersion
+                details.because 'SNYK-JAVA-CHQOSLOGBACK-17675439'
+            }
+            if (details.requested.group == 'io.opentelemetry') {
+                details.useVersion openTelemetryApiVersion
+                details.because 'Enforce consistent OpenTelemetry API version'
+            }
+            if (details.requested.group == 'org.apache.httpcomponents.core5') {
+                details.useVersion httpcore5Version
+                details.because 'SNYK-JAVA-ORGAPACHEHTTPCOMPONENTSCORE5-17817217'
+            }
+            if (details.requested.group == 'org.postgresql' && details.requested.name == 'postgresql') {
+                details.useVersion postgreSQLVersion
+                details.because 'Enforce consistent PostgreSQL driver version'
+            }
+        }
+    }
+
+    dependencies {
+        implementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+
+        // Transitive-only floors: a constraint is a minimum, so it yields to a higher
+        // BOM-managed version once one ships but never drags the BOM's version down.
+        constraints {
+            ['tomcat-embed-core', 'tomcat-embed-el', 'tomcat-embed-websocket'].each { artifact ->
+                implementation("org.apache.tomcat.embed:${artifact}:${tomcatEmbedVersion}") {
+                    because 'Tomcat (Boot 4.1.1 BOM) has open CVEs'
+                }
+            }
+        }
+
+        compileOnly "org.projectlombok:lombok:${lombokVersion}"
+        annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+        testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+        testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+        implementation "org.apache.commons:commons-lang3:${apacheCommonsVersion}"
+        implementation "org.apache.commons:commons-text:${apacheCommonsTextVersion}"
+
+        testImplementation "org.springframework.boot:spring-boot-starter-test"
+        testImplementation "org.junit.jupiter:junit-jupiter"
+        testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+        testImplementation "io.rest-assured:rest-assured:${restAssuredVersion}"
+
+        // Testcontainers is intentionally NOT declared here: registry moved to the
+        // Testcontainers 2.x (renamed module) artifacts unversioned via the Boot 4.1.1
+        // BOM, while registry-auth must stay pinned to the 1.x line/artifact names
+        // (see its own build.gradle). A shared version here would force one module onto
+        // the wrong major version, so each module declares its own testcontainers deps.
+    }
+
+    test {
+        useJUnitPlatform()
+        finalizedBy tasks.jacocoTestReport
+
+        // Parallelism here is CROSS-MODULE only (org.gradle.parallel=true in
+        // gradle.properties): api, auth and rollup run their test tasks concurrently.
+        // That is safe because no fixed host port is shared between modules -
+        // api uses 7777/878x/879x, auth uses 4012 (compose) + 8333, rollup uses 8177.
+        //
+        // maxParallelForks stays 1 deliberately. Extra forks are separate JVMs on the
+        // SAME host, and this suite binds fixed host ports: WireMock servers created
+        // with options().port(N) whose values are hardcoded as URLs in
+        // application-test.yaml, plus the singleton oidc DockerComposeContainer bound
+        // to 4012. Two forks in one module therefore race for the same port and fail
+        // with BindException / ContainerLaunchException. Raising this requires moving
+        // every WireMock to a dynamic port and overriding those yaml URLs via
+        // @DynamicPropertySource first. Override for an experiment with -PtestForks=N.
+        maxParallelForks = (project.findProperty('testForks') ?: '1') as int
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.required.set(true)
+            csv.required.set(false)
+            html.required.set(true)
+            html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+        }
+        dependsOn tasks.test
+    }
+
+    jacocoTestCoverageVerification {
+        violationRules {
+            rule {
+                limit {
+                    counter = "LINE"
+                    value = "COVEREDRATIO"
+                    minimum = "0.80".toBigDecimal()
+                }
+            }
+        }
+    }
+
+    check.dependsOn jacocoTestCoverageVerification
+}

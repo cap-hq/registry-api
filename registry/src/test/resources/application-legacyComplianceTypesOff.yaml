@@ -1,0 +1,3 @@
+app:
+  legacy-compliance-types:
+    enabled: false

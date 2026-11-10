@@ -1,0 +1,57 @@
+meta {
+  name: updateAuthClient
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($authClient: AuthClientRequestInput!) {
+    updateAuthClient(authClient: $authClient) {
+      id
+      clientId
+      clientVersion
+      clientSecret
+      clientSecretExpiresAt
+      description
+      type
+      redirectUrls
+      accessTokenExpireMinutes
+      refreshTokenExpireMinutes
+      lastAccessTokenIssuedAt
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "authClient": {
+      "teamName": "{{teamName}}",
+      "clientId": "registry-demo-client",
+      "description": "Updated from the Registry Bruno collection",
+      "type": "USER_PKCE",
+      "redirectUrls": [
+        "http://localhost:3000/callback",
+        "http://localhost:9876/callback"
+      ]
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

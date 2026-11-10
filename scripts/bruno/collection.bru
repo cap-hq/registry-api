@@ -1,0 +1,57 @@
+meta {
+  name: Registry
+}
+
+headers {
+  ~X-External-User-Id: {{devUserExternalId}}
+}
+
+auth {
+  mode: oauth2
+}
+
+auth:oauth2 {
+  grant_type: authorization_code
+  callback_url: {{oauthCallbackUrl}}
+  authorization_url: {{authBrowserUrl}}/oauth2/authorize
+  access_token_url: {{authBrowserUrl}}/oauth2/token
+  refresh_token_url: {{authBrowserUrl}}/oauth2/token
+  client_id: {{oauthPkceClientId}}
+  client_secret: 
+  scope: {{oauthScopes}}
+  state: 
+  pkce: true
+  credentials_placement: body
+  credentials_id: credentials
+  token_source: access_token
+  token_placement: header
+  token_header_prefix: Bearer
+  auto_fetch_token: true
+  auto_refresh_token: false
+}
+
+docs {
+  # Registry API collection
+
+  Covers Registry (GraphQL + REST), Registry Auth (OAuth2/OIDC, GraphQL, REST),
+  Registry Rollup (GraphQL), privileged admin operations, and a Bootstrap folder
+  used to seed/verify a fresh local or cloud stack.
+
+  ## Auth model
+  The collection root authenticates with **OAuth2 Authorization Code + PKCE**
+  against Registry Auth using the seeded public client (`oauthPkceClientId`).
+  Every folder/request uses `auth: inherit` unless it needs something else:
+
+  * `Registry Auth / Registered Clients` and `Bootstrap` admin calls use the
+    `X-Api-Secret` header (`apiSecret`) instead of a bearer token.
+  * The commented `X-External-User-Id` header is the Registry **local/test
+    profile dev-auth bypass**. Enable it (remove `~`) to skip OAuth entirely
+    when Registry runs with the `local` profile.
+
+  ## Environments
+  * `Local` – everything on localhost (Registry 8100, Auth 8200, Rollup 8150).
+  * `Cloud` – placeholder hostnames; fill in via `.env`.
+
+  All secrets and site-specific values come from `.env` (gitignored).
+  Copy `.env.example` to `.env` and fill in the values.
+}

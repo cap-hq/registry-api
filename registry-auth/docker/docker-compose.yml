@@ -1,0 +1,29 @@
+# ################################################################
+# setup local postgres DB
+#  e.g.
+#    docker compose up -d
+#    docker compose down
+# ################################################################
+
+version: '3.5'
+
+services:
+
+  db_auth:
+    container_name: postgres_auth
+    image: postgres:17-alpine # mac m1/m2
+    #    image: postgres # mac intel
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "root" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: registry_auth
+    ports:
+      - "5435:5432"
+

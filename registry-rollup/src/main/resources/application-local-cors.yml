@@ -1,0 +1,10 @@
+app:
+  cors:
+    allowed-headers:
+      - Content-Type
+      - Accept
+      - X-Requested-With
+      - Authorization
+      - X-External-User-Id
+      - traceparent
+      - tracestate

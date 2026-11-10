@@ -1,0 +1,21 @@
+meta {
+  name: 2 Inspect seeded PKCE client
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{authUrl}}/v1/client/{{oauthPkceClientId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Confirms the Flyway-seeded public PKCE client used by this collection exists.
+}

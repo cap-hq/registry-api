@@ -1,0 +1,53 @@
+meta {
+  name: updateMemberByExternalId
+  type: graphql
+  seq: 8
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($member: MemberRequestInput!) {
+    updateMemberByExternalId(member: $member) {
+      id
+      version
+      externalId
+      externalAlias
+      employeeId
+      email
+      name
+      firstName
+      lastName
+      managerExternalId
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "member": {
+      "externalId": "{{memberExternalId}}",
+      "email": "{{memberEmail}}",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "name": "Jane Doe"
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

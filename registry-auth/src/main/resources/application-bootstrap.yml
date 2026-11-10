@@ -1,0 +1,27 @@
+# --------------------------------------------------------------
+# Profile for a NEW (greenfield) installation only.
+#
+# Adds the Flyway seed location, which creates the public PKCE client
+# `registry-user-pkce` (V2) with the bootstrap/bootstrap.sh callback (V3).
+# That client is the only OAuth client a fresh deployment has; the bootstrap
+# script signs in with it to create the first team.
+#
+# Activate alongside the environment profile on the first start against an
+# empty database, e.g. SPRING_PROFILES_ACTIVE=local,bootstrap. Keep it on
+# afterwards (harmless: Flyway records V2/V3 once, and the SQL is idempotent).
+# Dropping it fails startup: without db/seed, the applied V2/V3 sit below the
+# latest schema migration (V4+), so the base profile reports them as missing.
+# To drop it from a seeded database, first run Flyway repair once against it
+# (table flyway_schema_history_v2, db/migration only) to mark V2/V3 as deleted.
+# Never activate it for an existing deployment that manages its own clients.
+#
+# db/seed shares the version sequence with db/migration, so every version must
+# be unique across both folders.
+# --------------------------------------------------------------
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+    # Tolerates applied migrations no longer in the build (e.g. a removed seed file)
+    # while this profile is active. It goes away with the profile, so it does not
+    # make dropping the profile safe (see above).
+    ignore-migration-patterns: "*:missing,*:future"

@@ -1,0 +1,26 @@
+meta {
+  name: PATCH application externalId
+  type: http
+  seq: 11
+}
+
+patch {
+  url: {{registryUrl}}/v1/admin/application/externalId
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "teamName": "{{teamName}}",
+    "applicationName": "{{applicationName}}",
+    "oldExternalId": "demo-external-id",
+    "newExternalId": "demo-external-id-2"
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

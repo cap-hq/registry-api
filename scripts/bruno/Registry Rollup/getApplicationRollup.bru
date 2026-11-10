@@ -1,0 +1,58 @@
+meta {
+  name: getApplicationRollup
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{rollupUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($paginationInput: PaginationInput!, $filter: ApplicationSearchFilterInput) {
+    getApplicationRollup(paginationInput: $paginationInput, filter: $filter) {
+      pageNumber
+      pageSize
+      totalRecordCount
+      totalPageCount
+      applications {
+        id
+        version
+        name
+        teamName
+        description
+        managers {
+          externalId
+          externalAlias
+          displayName
+          email
+          title
+        }
+        lineOfBusiness {
+          name
+          description
+        }
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "paginationInput": {
+      "pageNumber": 1,
+      "pageSize": 20
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

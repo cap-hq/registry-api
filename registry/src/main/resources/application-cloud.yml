@@ -1,0 +1,20 @@
+spring:
+  cloud:
+    # Azure AD tenant: set spring.cloud.azure.profile.tenant-id (env SPRING_CLOUD_AZURE_PROFILE_TENANT_ID) per environment
+    gcp:
+      sql:
+        enabled: false
+        jdbc:
+          enabled: false
+        r2dbc:
+          enabled: false
+
+app:
+  clouds:
+    - name: gcp
+      tenants:
+        - general
+      regions:
+        - us-east4
+        - us-west2
+      default-region: us-east4

@@ -1,0 +1,17 @@
+meta {
+  name: GET inputs (REST)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{registryUrl}}/v1/inputs
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

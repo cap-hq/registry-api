@@ -1,0 +1,44 @@
+service:
+  context-path: /rollup
+
+# --------------------
+# Server Configuration
+# Prefix: server.*
+# --------------------
+server:
+  max-http-request-header-size: 80KB
+
+# --------------------
+# Spring Configuration including datasource
+# Prefix: spring.*
+# --------------------
+spring:
+  application:
+    name: registry
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+  main:
+    banner-mode: off
+
+  # ---------------------
+  #  multiple jwt issuers
+  # ---------------------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          sources:
+            # Registry auth server (local)
+            - jwk-set-uri: http://localhost:8200/auth/oauth2/jwks
+              issuer-uri: http://localhost:8200/auth
+
+registry:
+  base-uri: http://localhost:8177/api/graphql
+  api-secret: test
+
+app:
+  line-business:
+    enabled: true   # integration tests query the line-of-business rollup fields

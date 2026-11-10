@@ -1,0 +1,37 @@
+# Local-only Dockerfile for running a Registry module inside the local Docker
+# stack. One file serves all three modules; scripts/registry-stack drives it:
+#
+#   ./gradlew :registry-auth:build -x test -x jacocoTestReport -x jacocoTestCoverageVerification
+#   docker build -f Dockerfile.registry-localstack \
+#     --build-arg MODULE=registry-auth --build-arg PORT=8200 \
+#     [--build-arg IMAGE_PREFIX=registry.example.com/] \
+#     [--build-arg CACERTS=cacerts --build-context corpcerts=<dir containing cacerts>] \
+#     -t registry-auth .
+#
+# Build context is the repository root.
+#
+# This is a local-only image. It uses a multi-arch base (arm64 and amd64),
+# so it runs on Apple Silicon without emulation.
+
+ARG IMAGE_PREFIX=""
+FROM ${IMAGE_PREFIX}azul/zulu-openjdk-alpine:25
+
+ARG MODULE
+ARG PORT
+# Optional: a Java cacerts file that trusts a corporate proxy CA. Without it,
+# outbound HTTPS from the container (e.g. Azure AD OIDC discovery) fails behind
+# an intercepting proxy with SunCertPathBuilderException. Supplied via the
+# `corpcerts` build context; defaults to a no-op copy of the image's own file.
+ARG CACERTS=/usr/lib/jvm/zulu25/lib/security/cacerts
+COPY --from=corpcerts ${CACERTS} /usr/lib/jvm/zulu25/lib/security/cacerts
+
+WORKDIR /opt/digital/${MODULE}/
+
+COPY ${MODULE}/build/libs/${MODULE}-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE ${PORT}
+
+ENTRYPOINT ["java", \
+  "-Duser.timezone=Etc/UTC", \
+  "-jar", \
+  "app.jar"]

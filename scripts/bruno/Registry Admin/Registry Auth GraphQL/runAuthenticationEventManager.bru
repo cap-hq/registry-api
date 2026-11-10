@@ -1,0 +1,30 @@
+meta {
+  name: runAuthenticationEventManager
+  type: graphql
+  seq: 8
+}
+
+post {
+  url: {{authUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation {
+    runAuthenticationEventManager
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}
+
+docs {
+  Triggers the daily authentication-event aggregation job.
+}

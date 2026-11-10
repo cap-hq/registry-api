@@ -1,0 +1,103 @@
+[
+  {
+    "managerId": "00000000-0000-0000-0000-000000000011",
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000001",
+      "employeeId": "100001",
+      "displayName": "Tester, One",
+      "givenName": "One",
+      "surname": "Tester",
+      "mail": "one.tester@example.com",
+      "mailNickname": "onetester",
+      "userType": "Member",
+      "jobTitle": "Software Engineer",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "onetester"
+    }
+  },
+  {
+    "managerId": "00000000-0000-0000-0000-000000000011",
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000002",
+      "employeeId": "100002",
+      "displayName": "Tester, Two",
+      "givenName": "Two",
+      "surname": "Tester",
+      "mail": "two.tester@example.com",
+      "mailNickname": "twotester",
+      "userType": "Member",
+      "jobTitle": "Software Engineer",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "twotester"
+    }
+  },
+  {
+    "managerId": "00000000-0000-0000-0000-000000000012",
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000003",
+      "employeeId": "100003",
+      "displayName": "Tester, Three",
+      "givenName": "Three",
+      "surname": "Tester",
+      "mail": "three.tester@example.com",
+      "mailNickname": "threetester",
+      "userType": "Member",
+      "jobTitle": "Software Engineer",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "threetester"
+    }
+  },
+  {
+    "managerId": "00000000-0000-0000-0000-000000000012",
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000011",
+      "employeeId": "100011",
+      "displayName": "Manager, Level One",
+      "givenName": "Level One",
+      "surname": "Manager",
+      "mail": "level1.manager@example.com",
+      "mailNickname": "levelonemanager",
+      "userType": "Member",
+      "jobTitle": "Manager",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "levelonemanager"
+    }
+  },
+  {
+    "managerId": "00000000-0000-0000-0000-000000000013",
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000012",
+      "employeeId": "100012",
+      "displayName": "Manager, Level Two",
+      "givenName": "Level Two",
+      "surname": "Manager",
+      "mail": "level2.manager@example.com",
+      "mailNickname": "leveltwomanager",
+      "userType": "Member",
+      "jobTitle": "Director",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "leveltwomanager"
+    }
+  },
+  {
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000013",
+      "employeeId": "100013",
+      "displayName": "Manager, Level Three",
+      "givenName": "Level Three",
+      "surname": "Manager",
+      "mail": "level3.manager@example.com",
+      "mailNickname": "levelthreemanager",
+      "userType": "Member",
+      "jobTitle": "Vice President",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "levelthreemanager"
+    }
+  }
+]

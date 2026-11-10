@@ -1,0 +1,56 @@
+meta {
+  name: getAuthenticationEvents
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{authUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($paginationInput: PaginationInputInput!, $filter: AuthenticationEventFilterInput!) {
+    getAuthenticationEvents(paginationInput: $paginationInput, filter: $filter) {
+      pageNumber
+      pageSize
+      totalRecordCount
+      totalPageCount
+      events {
+        id
+        clientId
+        clientName
+        grantType
+        principalName
+        principalOid
+        agent
+        externalAlias
+        authenticatedAt
+        success
+        eventAttributes
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "paginationInput": {
+      "pageNumber": 1,
+      "pageSize": 20
+    },
+    "filter": {
+      "clientId": "{{oauthPkceClientId}}"
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

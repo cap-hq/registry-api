@@ -1,0 +1,65 @@
+meta {
+  name: getMemberRollup
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{rollupUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($paginationInput: PaginationInput!, $filter: MemberSearchFilterInput) {
+    getMemberRollup(paginationInput: $paginationInput, filter: $filter) {
+      pageNumber
+      pageSize
+      totalRecordCount
+      totalPageCount
+      members {
+        id
+        externalId
+        externalAlias
+        email
+        name
+        appRegistryMember
+        managers {
+          externalId
+          externalAlias
+          displayName
+          email
+          title
+        }
+        lineOfBusiness {
+          name
+          description
+        }
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "paginationInput": {
+      "pageNumber": 1,
+      "pageSize": 20
+    },
+    "filter": {
+      "externalAliases": [
+        "{{memberExternalAlias}}"
+      ],
+      "appRegistryMembersOnly": true
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

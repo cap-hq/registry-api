@@ -1,0 +1,25 @@
+{
+  "value": [
+    {
+      "id": "00000000-0000-0000-0000-000000000101",
+      "appId": "00000000-0000-0000-0000-000000000102",
+      "displayName": "test-auth-client",
+      "passwordCredentials": [
+        {
+          "keyId": "00000000-0000-0000-0000-000000000103",
+          "displayName": "dev-client-secret-1",
+          "hint": "abc",
+          "startDateTime": "2025-01-01T00:00:00Z",
+          "endDateTime": "2099-12-31T00:00:00Z"
+        },
+        {
+          "keyId": "00000000-0000-0000-0000-000000000104",
+          "displayName": "unrelated-secret",
+          "hint": "xyz",
+          "startDateTime": "2025-01-01T00:00:00Z",
+          "endDateTime": "2099-12-31T00:00:00Z"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+# Gitleaks configuration: default rules plus allowlists for known non-secrets.
+[extend]
+useDefault = true
+
+# Test sentinel: run-tests.sh writes this fixed string to a secret file to prove
+# bootstrap.sh never leaks the API secret into output or process arguments.
+[[allowlists]]
+targetRules = ["generic-api-key"]
+description = "bootstrap test sentinel secret"
+condition = "AND"
+paths = ['''^bootstrap/tests/run-tests\.sh$''']
+regexes = ['''sentinel-SECRET-7f3a9c''']

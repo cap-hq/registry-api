@@ -1,0 +1,17 @@
+meta {
+  name: GET slack channelInfo
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{registryUrl}}/v1/admin/slack/channelInfo/{{slackChannelId}}
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

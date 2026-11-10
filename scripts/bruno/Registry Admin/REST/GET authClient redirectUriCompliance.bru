@@ -1,0 +1,21 @@
+meta {
+  name: GET authClient redirectUriCompliance
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{registryUrl}}/v1/admin/authClient/redirectUriCompliance
+  body: none
+  auth: inherit
+}
+
+params:query {
+  clientId: {{oauthPkceClientId}}
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

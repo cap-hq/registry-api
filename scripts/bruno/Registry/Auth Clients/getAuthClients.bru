@@ -1,0 +1,61 @@
+meta {
+  name: getAuthClients
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query getAuthClients($paginationInput: PaginationInput!, $filter: AuthClientSearchFilterInput) {
+    getAuthClients(paginationInput: $paginationInput, filter: $filter) {
+      pageNumber
+      pageSize
+      totalRecordCount
+      totalPageCount
+      authClients {
+        id
+        clientId
+        clientVersion
+        clientSecret
+        clientSecretExpiresAt
+        description
+        type
+        redirectUrls
+        accessTokenExpireMinutes
+        refreshTokenExpireMinutes
+        lastAccessTokenIssuedAt
+        createUser
+        createTimestamp
+        updateUser
+        updateTimestamp
+        teams {
+          id
+          name
+        }
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "paginationInput": {
+      "pageNumber": 1,
+      "pageSize": 20
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

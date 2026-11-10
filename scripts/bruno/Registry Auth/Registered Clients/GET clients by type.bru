@@ -1,0 +1,17 @@
+meta {
+  name: GET clients by type
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{authUrl}}/v1/clients/type/USER_PKCE
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

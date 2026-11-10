@@ -1,0 +1,17 @@
+meta {
+  name: GET actuator health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{registryUrl}}/actuator/health
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

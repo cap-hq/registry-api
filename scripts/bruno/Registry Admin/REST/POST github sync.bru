@@ -1,0 +1,29 @@
+meta {
+  name: POST github sync
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{registryUrl}}/v1/admin/github/sync
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "dryRun": true,
+    "maxTeams": 5,
+    "maxMembers": 5
+  }
+}
+
+vars:post-response {
+  githubSyncJobId: res.body.jobId
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

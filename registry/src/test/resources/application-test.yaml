@@ -1,0 +1,178 @@
+service:
+  context-path: /api
+  logging:
+    ignore-events:
+      - ENTRY
+    excluded-endpoints:
+      - "/actuator*/**"
+      - "/swagger*/**"
+      - "/health*/**"
+      - "/metrics/**"
+      - "/api/actuator*/**"
+      - "/api/swagger*/**"
+      - "/api/health*/**"
+
+# --------------------
+# Server Configuration
+# Prefix: server.*
+# --------------------
+server:
+  max-http-request-header-size: 80KB
+
+# --------------------
+# Spring Configuration including datasource
+# Prefix: spring.*
+# --------------------
+spring:
+  config:
+    import: optional:classpath:/secrets.yml
+  application:
+    name: registry
+  web:
+    resources:
+      add-mappings: false
+  main:
+    banner-mode: off
+    allow-bean-definition-overriding: true
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    database: postgresql
+    show-sql: false
+    generate-ddl: true
+    hibernate.ddl-auto: none
+  flyway:
+    enabled: true
+
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 2
+      max-lifetime: 1800000
+      pool-name: hikari-cp
+      connection-timeout: 30000
+      idle-timeout: 30000
+      keepalive-time: 1
+
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail.enabled: true
+
+authorized-teams:
+  Test-Auth-Team,
+
+registry-auth:
+  base-uri: http://localhost:8787/auth/v1
+  api-secret: test
+
+registry-rollup:
+  base-uri: http://localhost:8789/graphql
+  api-secret: test
+
+cap-ui-url: https://cap-ui.example.com
+registry-ui-url: https://registry-ui.example.com/
+
+external-application-api:
+  base-uri: http://localhost:8785
+  auth-provider:
+    base-uri: http://localhost:8786
+    scope: api-scope
+    client-id: client-1
+    client-secret: client-secret-123
+
+app:
+  downstream-applications:
+    app1-id:
+      name: App1 Name
+      url: http://localhost:7777/teamcheck
+      token: app1testtoken
+  max-allowed-team-memberships: 10
+  team:
+    external-name-prefix: "Registry_"
+    rollup:
+      enabled: false
+  application:
+    external-id:
+      validate: true
+  # L2 Cache
+  cache:
+    redis:
+      enabled: false
+  job:
+    auth-client:
+      enabled: false
+    cache-refresh:
+      enabled: false
+    azure-sync:
+      enabled: true
+    azure-manager-sync:
+      enabled: true
+    auth-provider-client-check:
+      enabled: true
+      clients:
+        - name: "test-auth-client"
+          secret-name-prefix: "dev-client-secret"
+          secret-env-var: "SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_SECRET"
+    auth-client-cleanup:
+      enabled: false
+    information-classification-backfill:
+      enabled: true
+      batch-size: 2   # small so the tests cover more than one batch
+    auth-client-expiration-check:
+      docs-url: http://localhost:3000
+    external-id-sync:
+      enabled: true
+    usage-statistics:
+      enabled: true
+  external-resource-check:
+    graphql:
+      query-name: "getCapResources"
+    rest:
+      endpoint: "getCapResources"
+  external-resources:
+    resource1-graphql:
+      name: EXTERNAL_RESOURCE1
+      url: http://localhost:8788/graphql
+      client-type: GRAPHQL
+    resource2-graphql:
+      name: EXTERNAL_RESOURCE2
+      url: http://localhost:8790/graphql
+      client-type: GRAPHQL
+    resource3-rest:
+      name: EXTERNAL_RESOURCE3
+      url: http://localhost:8791/api
+      client-type: REST
+    resource4-graphql:
+      name: EXTERNAL_RESOURCE4
+      url: http://localhost:8792/graphql
+      client-type: GRAPHQL
+    resource5-graphql:
+      name: EXTERNAL_RESOURCE5
+      url: http://localhost:8793/graphql
+      client-type: GRAPHQL
+  admin:
+    line-business:
+      enabled: true
+    authorized-teams:
+      Team1, Personal-OneTester
+  slack:
+    enabled: true
+    app-name: Registry-TEST
+    token: NA
+    methods-endpoint-url-prefix: http://localhost:9999/api/
+    cache-ttl-in-Minutes: 1
+  clouds:
+    - name: gcp
+      tenants:
+        - general
+      regions:
+        - us-central1
+      default-region: us-central1
+    - name: azure
+      tenants:
+        - general
+      regions:
+        - centralus
+      default-region: centralus

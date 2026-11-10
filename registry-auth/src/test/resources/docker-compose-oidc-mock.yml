@@ -1,0 +1,116 @@
+version: '3.5'
+
+services:
+
+# This mock OIDC server is used to simulate Azure during integration testing
+#  application-test.yml azure-idp is configured to point to this mock server with test login creds
+  oidc-server-mock:
+#    container_name: oidc-server-mock
+    image: ghcr.io/soluto/oidc-server-mock:0.8.6
+    ports:
+      - '4012:80'
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      SERVER_OPTIONS_INLINE: |
+        {
+          "AccessTokenJwtType": "JWT",
+          "Discovery": {
+            "ShowKeySet": true
+          },
+          "Authentication": {
+            "CookieSameSiteMode": "Lax",
+            "CheckSessionCookieSameSiteMode": "Lax"
+          }
+        }
+      LOGIN_OPTIONS_INLINE: |
+        {
+          "AllowRememberLogin": false
+        }
+      LOGOUT_OPTIONS_INLINE: |
+        {
+          "AutomaticRedirectAfterSignOut": true
+        }
+      IDENTITY_RESOURCES_INLINE: |
+        [
+          { 
+            "Name": "App.User",
+            "ClaimTypes": ["oid", "name", "email"]
+          }
+        ]
+      USERS_CONFIGURATION_INLINE: |
+        [
+          {
+            "SubjectId":"1",
+            "Username":"user1",
+            "Password":"pwd",
+            "Claims": [
+              {
+                "Type": "oid",
+                "Value": "12345",
+                "ValueType": "string"
+              },
+              {
+                "Type": "name",
+                "Value": "User 1",
+                "ValueType": "string"
+              },
+              {
+                "Type": "email",
+                "Value": "user.1@example.com",
+                "ValueType": "string"
+              },
+              {
+                "Type": "preferred_username",
+                "Value": "user.1@example.com",
+                "ValueType": "string"
+              }
+            ]
+          },
+          {
+            "SubjectId":"2",
+            "Username":"user2",
+            "Password":"pwd",
+            "Claims": [
+              {
+                "Type": "oid",
+                "Value": "54321",
+                "ValueType": "string"
+              },
+              {
+                "Type": "name",
+                "Value": "User 2",
+                "ValueType": "string"
+              },
+              {
+                "Type": "email",
+                "Value": "user.2@example.com",
+                "ValueType": "string"
+              }
+            ]
+          }
+        ]
+      CLIENTS_CONFIGURATION_INLINE: |
+        [
+          {
+            "ClientId": "abc123",
+            "ClientSecrets": ["abc123"],
+            "Description": "Azure mock oidc server",
+            "AllowedGrantTypes": ["authorization_code"],
+            "AllowAccessTokensViaBrowser": true,
+            "AllowedScopes": ["openid", "email", "profile", "App.User"],
+            "RedirectUris": ["*"],
+            "ClientClaimsPrefix": "",
+            "IdentityTokenLifetime": 3600,
+            "AccessTokenLifetime": 3600,
+            "RequirePkce": false,
+            "AlwaysIncludeUserClaimsInIdToken": true
+          }
+        ]
+      ASPNET_SERVICES_OPTIONS_INLINE: |
+        { 
+          "ForwardedHeadersOptions": { 
+            "ForwardedHeaders" : "All"
+          }
+        }
+    volumes:
+      - .:/tmp/config:ro

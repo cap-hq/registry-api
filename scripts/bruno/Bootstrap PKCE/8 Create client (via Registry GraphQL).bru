@@ -1,0 +1,60 @@
+meta {
+  name: 8 Create client (via Registry GraphQL)
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($authClient: AuthClientRequestInput!) {
+    createAuthClient(authClient: $authClient) {
+      id
+      clientId
+      clientVersion
+      clientSecret
+      clientSecretExpiresAt
+      description
+      type
+      redirectUrls
+      accessTokenExpireMinutes
+      refreshTokenExpireMinutes
+      lastAccessTokenIssuedAt
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "authClient": {
+      "teamName": "{{bootstrapTeamName}}",
+      "clientId": "{{demoClientId}}",
+      "description": "{{demoClientName}}",
+      "type": "{{demoClientType}}",
+      "redirectUrls": [
+        "{{demoRedirectUrl}}"
+      ]
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}
+
+docs {
+  Optional. Registers the demo client `demoClientId` the same way `bootstrap.sh` does: through Registry, owned by `bootstrapTeamName`, mirrored into Registry Auth. Runs as the signed-in user (collection PKCE token), who must be a member of that team with `AuthClient create`. `DEMO_CLIENT_TYPE` `USER` / `NON_USER` return `clientSecret` exactly once — copy it into `DEMO_CLIENT_SECRET`; `USER_PKCE` has none.
+}

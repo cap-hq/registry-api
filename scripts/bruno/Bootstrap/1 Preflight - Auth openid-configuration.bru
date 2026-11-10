@@ -1,0 +1,17 @@
+meta {
+  name: 1 Preflight - Auth openid-configuration
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{authUrl}}/.well-known/openid-configuration
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

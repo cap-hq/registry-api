@@ -1,0 +1,28 @@
+meta {
+  name: DELETE member
+  type: http
+  seq: 16
+}
+
+delete {
+  url: {{registryUrl}}/v1/admin/member/delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "memberId": 0,
+    "assigningManagerExternalId": "{{managerExternalId}}"
+  }
+}
+
+tests {
+  test("status is 204", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Destructive – removes a member from every team and reassigns ownership.
+}

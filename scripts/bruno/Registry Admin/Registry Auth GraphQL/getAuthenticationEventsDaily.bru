@@ -1,0 +1,53 @@
+meta {
+  name: getAuthenticationEventsDaily
+  type: graphql
+  seq: 7
+}
+
+post {
+  url: {{authUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($paginationInput: PaginationInputInput!, $filter: AuthenticationEventDailyFilterInput!) {
+    getAuthenticationEventsDaily(paginationInput: $paginationInput, filter: $filter) {
+      pageNumber
+      pageSize
+      totalRecordCount
+      totalPageCount
+      events {
+        eventDate
+        clientId
+        clientName
+        grantType
+        principalName
+        externalAlias
+        success
+        eventCount
+        firstAuthentication
+        lastAuthentication
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "paginationInput": {
+      "pageNumber": 1,
+      "pageSize": 20
+    },
+    "filter": {}
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

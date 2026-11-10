@@ -1,0 +1,18 @@
+// SPDX-FileCopyrightText: © 2026 CVS Health and/or one of its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version "${foojayResolverVersion}"
+}
+
+rootProject.name = 'registry-api'
+include 'registry'
+include 'registry-auth'
+include 'registry-rollup'

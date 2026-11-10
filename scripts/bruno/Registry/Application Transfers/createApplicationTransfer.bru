@@ -1,0 +1,49 @@
+meta {
+  name: createApplicationTransfer
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($applicationTransfer: ApplicationTransferRequestInput) {
+    createApplicationTransfer(applicationTransfer: $applicationTransfer) {
+      id
+      applicationId
+      sourceTeamId
+      receiveTeamId
+      status
+      comments
+      version
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "applicationTransfer": {
+      "applicationName": "{{applicationName}}",
+      "sourceTeamName": "{{teamName}}",
+      "receiveTeamName": "registry-demo-team-2",
+      "comments": "Transfer from the Registry Bruno collection"
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

@@ -1,0 +1,11 @@
+meta {
+  name: REST
+}
+
+auth {
+  mode: inherit
+}
+
+docs {
+  Registry `AdminController` (`{{registryUrl}}/v1/admin/*`). Inherits the collection OAuth token; the logged-in user needs the `AdminTask` permission (service `X-Api-Secret` is rejected because there is no user).
+}

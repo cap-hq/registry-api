@@ -1,0 +1,26 @@
+meta {
+  name: POST revoke
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{authUrl}}/oauth2/revoke
+  body: formUrlEncoded
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoClientId}}
+  password: {{demoClientSecret}}
+}
+
+body:form-urlencoded {
+  token: {{clientCredentialsToken}}
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

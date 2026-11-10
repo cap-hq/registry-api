@@ -1,0 +1,17 @@
+meta {
+  name: GET openid-configuration
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{authUrl}}/.well-known/openid-configuration
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

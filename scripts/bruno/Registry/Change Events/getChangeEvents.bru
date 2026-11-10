@@ -1,0 +1,65 @@
+meta {
+  name: getChangeEvents
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($paginationInput: PaginationInput!, $request: ChangeEventGetRequestInput!) {
+    getChangeEvents(paginationInput: $paginationInput, request: $request) {
+      pageNumber
+      pageSize
+      totalRecordCount
+      totalPageCount
+      changeEvents {
+        eventId
+        version
+        eventType
+        eventAction
+        entityId
+        syncStatus
+        createUser
+        createTimestamp
+        updateUser
+        updateTimestamp
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "paginationInput": {
+      "pageNumber": 1,
+      "pageSize": 20
+    },
+    "request": {
+      "clientId": "{{oauthPkceClientId}}",
+      "eventTypes": [
+        "TEAM",
+        "APPLICATION",
+        "MEMBER",
+        "TEAM_MEMBER",
+        "API",
+        "API_CONSUMER",
+        "AUTH_CLIENT",
+        "BUSINESS_LINE"
+      ]
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

@@ -1,0 +1,47 @@
+meta {
+  name: createMemberByExternalAlias
+  type: graphql
+  seq: 7
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($externalAlias: String!) {
+    createMemberByExternalAlias(externalAlias: $externalAlias) {
+      id
+      version
+      externalId
+      externalAlias
+      employeeId
+      email
+      name
+      firstName
+      lastName
+      managerExternalId
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "externalAlias": "{{memberExternalAlias}}"
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

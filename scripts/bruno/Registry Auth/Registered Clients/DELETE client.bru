@@ -1,0 +1,21 @@
+meta {
+  name: DELETE client
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{authUrl}}/v1/client/registry-demo-client
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 204", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Destructive.
+}

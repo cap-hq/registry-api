@@ -1,0 +1,20 @@
+// SPDX-FileCopyrightText: © 2026 CVS Health and/or one of its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+package com.cvshealth.cap.registry.config;
+
+import com.cvshealth.cap.registry.model.ExternalResourceRequest;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Configuration
+public class ExternalResourceConfig {
+
+    @Bean
+    @ConfigurationProperties(prefix = "app.external-resources")
+    public Map<String, ExternalResourceRequest> externalResources() {return new HashMap<>();}
+}

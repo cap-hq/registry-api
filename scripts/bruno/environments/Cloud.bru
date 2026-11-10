@@ -1,0 +1,29 @@
+vars {
+  registryUrl: https://registry.example.com/api
+  authUrl: https://auth.example.com/auth
+  authBrowserUrl: https://auth.example.com/auth
+  rollupUrl: https://rollup.example.com/rollup
+  oauthPkceClientId: registry-user-pkce
+  oauthCallbackUrl: http://localhost:9876/callback
+  oauthScopes: {{process.env.OAUTH_USER_SCOPES}}
+  oauthClientScopes: {{process.env.OAUTH_CLIENT_SCOPES}}
+  teamName: registry-demo-team
+  applicationName: registry-demo-app
+  apiName: registry-demo-api
+  apiVersion: 1.0.0
+  lineOfBusinessName: registry-demo-lob
+  memberExternalId: {{process.env.MEMBER_EXTERNAL_ID}}
+  memberExternalAlias: {{process.env.MEMBER_EXTERNAL_ALIAS}}
+  memberEmail: {{process.env.MEMBER_EMAIL}}
+  devUserExternalId: {{process.env.DEV_USER_EXTERNAL_ID}}
+  managerExternalId: {{process.env.MANAGER_EXTERNAL_ID}}
+  slackChannelId: {{process.env.SLACK_CHANNEL_ID}}
+  apiSecret: {{process.env.REGISTRY_API_SECRET}}
+  bootstrapClientId: {{process.env.BOOTSTRAP_CLIENT_ID}}
+  bootstrapTeamName: {{process.env.BOOTSTRAP_TEAM_NAME}}
+  demoClientId: {{process.env.DEMO_CLIENT_ID}}
+  demoClientName: {{process.env.DEMO_CLIENT_NAME}}
+  demoClientType: {{process.env.DEMO_CLIENT_TYPE}}
+  demoRedirectUrl: {{process.env.DEMO_REDIRECT_URL}}
+  demoClientSecret: {{process.env.DEMO_CLIENT_SECRET}}
+}

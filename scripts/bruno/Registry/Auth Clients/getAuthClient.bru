@@ -1,0 +1,53 @@
+meta {
+  name: getAuthClient
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($clientId: String!, $clientVersion: Int) {
+    getAuthClient(clientId: $clientId, clientVersion: $clientVersion) {
+      id
+      clientId
+      clientVersion
+      clientSecret
+      clientSecretExpiresAt
+      description
+      type
+      redirectUrls
+      accessTokenExpireMinutes
+      refreshTokenExpireMinutes
+      lastAccessTokenIssuedAt
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+      teams {
+        id
+        name
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "clientId": "{{oauthPkceClientId}}",
+    "clientVersion": null
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

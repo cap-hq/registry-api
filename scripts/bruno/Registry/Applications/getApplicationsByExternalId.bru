@@ -1,0 +1,52 @@
+meta {
+  name: getApplicationsByExternalId
+  type: graphql
+  seq: 4
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query($externalId: String!) {
+    getApplicationsByExternalId(externalId: $externalId) {
+      id
+      version
+      name
+      description
+      complianceTypes
+      priority
+      externalId
+      cloud
+      tenant
+      aiEnabled
+      dataPerimeter
+      team {
+        id
+        name
+      }
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "externalId": "demo-external-id"
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

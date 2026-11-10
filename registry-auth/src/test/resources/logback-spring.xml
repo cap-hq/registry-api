@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- default logback configuration    -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <logger name="org.hibernate.orm" level="INFO"/>
+    <logger name="org.springframework.web.servlet" level="DEBUG"/>
+    <logger name="org.springframework.web.servlet.mvc.method.annotation" level="INFO"/>
+
+</configuration>

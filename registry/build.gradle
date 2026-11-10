@@ -1,0 +1,207 @@
+// SPDX-FileCopyrightText: © 2026 CVS Health and/or one of its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+plugins {
+    id 'org.springframework.boot'
+    id 'io.swagger.core.v3.swagger-gradle-plugin' version "${swaggerVersion}"
+    id 'org.flywaydb.flyway'
+    id 'com.adarshr.test-logger' version "${testLoggerVersion}"
+}
+
+description = 'registry'
+
+// enable for test logging to console
+testlogger {
+    showStandardStreams = false
+}
+
+dependencies {
+    configurations.named('swaggerDeps') {
+        resolutionStrategy.eachDependency {details ->
+            if (details.requested.group == 'com.fasterxml.jackson.core' &&
+                    details.requested.name == 'jackson-core') {
+                details.useVersion('2.21.5')
+                details.because 'force version for SNYK-JAVA-COMFASTERXMLJACKSONCORE-17440598'
+            }
+        }
+    }
+
+    // // CVE-2025-12183 & CVE-2025-66566 fix
+    // // The original org.lz4:lz4-java is archived; use community fork at.yawk.lz4:lz4-java
+     implementation 'at.yawk.lz4:lz4-java:1.11.4'
+     modules {
+         module('org.lz4:lz4-java') {
+             replacedBy('at.yawk.lz4:lz4-java', 'CVE-2025-12183 & CVE-2025-66566: org.lz4 is archived, use community fork')
+         }
+     }
+
+    // Transitive-only version floors (CVE fixes + one pre-release avoidance). A constraint
+    // is a minimum, so each of these still yields to a higher BOM-managed version once one
+    // is published.
+    constraints {
+        implementation('ch.qos.logback:logback-core:1.5.38') {
+            because 'SNYK-JAVA-CHQOSLOGBACK-17675439'
+        }
+        implementation('org.apache.httpcomponents.core5:httpcore5-h2:5.4.3') {
+            because 'SNYK-JAVA-ORGAPACHEHTTPCOMPONENTSCORE5-17817217'
+        }
+        // Jackson 2 databind is forced globally (root build.gradle, jackson2DatabindVersion).
+        // Context for why registry in particular needs it: Boot 4.1.1 requests jackson 2.21.5,
+        // but com.azure:azure-core (via spring-cloud-azure-autoconfigure) drags in jackson-bom
+        // 2.22.0, which wins conflict resolution and shipped without the CVE-2026-59889 fix.
+        // spring-cloud-gcp 8.1.1 -> cloud-sql schemas 1.29.0 declares protobuf-java
+        // 4.36.0-RC1, and a release candidate outranks 4.35.1 in conflict resolution.
+        // 4.36.1 is the stable release that supersedes that RC.
+        implementation('com.google.protobuf:protobuf-java:4.36.1') {
+            because 'Keep a release candidate (4.36.0-RC1, via com.google.cloud.sql:schemas) off the production classpath'
+        }
+        // Unreachable by any Boot/Spring version - arrives via
+        // spring-cloud-azure-starter -> azure-core-amqp, which still declares 0.34.1.
+        implementation('org.apache.qpid:proton-j:0.35.0') {
+            because 'CVE-2026-66257/66273/66274/66275/66276/66277 (6x High): AMQP frame decoding DoS'
+        }
+    }
+
+    // annotationProcessor/testAnnotationProcessor/developmentOnly do NOT extend
+    // implementation, so the platform below does not reach them unless imported here
+    // explicitly. Without this, versions on those paths silently diverge from
+    // compile/runtime - and an unpinned dependency there fails to resolve outright.
+    annotationProcessor platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testAnnotationProcessor platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    developmentOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+    annotationProcessor "jakarta.persistence:jakarta.persistence-api"
+    // Boot 4.1.1 manages Hibernate ORM 7.4.x; hibernate-63 build is binary-incompatible with it
+    implementation "io.hypersistence:hypersistence-utils-hibernate-73:3.15.5"
+
+    implementation "org.flywaydb:flyway-core"
+    implementation "org.flywaydb:flyway-database-postgresql"
+    // Boot 4 split Flyway's autoconfiguration out of the core autoconfigure module;
+    // without this, flyway-core is present but never runs.
+    implementation "org.springframework.boot:spring-boot-starter-flyway"
+    implementation 'org.yaml:snakeyaml'
+
+    implementation "org.springframework.boot:spring-boot-starter"
+    implementation "org.springframework.boot:spring-boot-starter-webmvc"
+    implementation "org.springframework.boot:spring-boot-starter-validation"
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+    developmentOnly "org.springframework.boot:spring-boot-devtools"
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-freemarker'
+    implementation "org.springframework.retry:spring-retry:${springRetryVersion}"
+    // Boot 4 renamed spring-boot-starter-aop (last published 4.0.0-M2) to
+    // spring-boot-starter-aspectj, which bundles spring-aop + aspectjweaver.
+    implementation "org.springframework.boot:spring-boot-starter-aspectj"
+
+    implementation "org.springframework.security:spring-security-core"
+    implementation "org.springframework.security:spring-security-config"
+    implementation "org.springframework.security:spring-security-web"
+    implementation "org.springframework.security:spring-security-oauth2-client"
+
+    implementation "org.springframework.boot:spring-boot-starter-oauth2-resource-server"
+    // 5.24.1 targets Spring Boot 3.5; 7.4.0 is the line built against Boot 4.1
+    implementation platform("com.azure.spring:spring-cloud-azure-dependencies:7.4.0")
+    implementation "com.azure.spring:spring-cloud-azure-starter"
+    implementation "com.microsoft.graph:microsoft-graph:${microsoftGraphVersion}"
+
+    // 7.x targets Spring Boot 3.5 - its autoconfigure binds to Boot classes that were
+    // moved/removed in 4.x (health contributors, transaction + oauth2 resource server
+    // autoconfig). 8.x is the line built against spring-boot-dependencies 4.1.
+    implementation platform("com.google.cloud:spring-cloud-gcp-dependencies:${springCloudGcpVersion}")
+    implementation "com.google.cloud:spring-cloud-gcp-starter-sql-postgresql"
+    // version managed by spring-cloud-gcp-dependencies above
+    implementation 'com.google.cloud.sql:postgres-socket-factory'
+
+    implementation "com.github.ulisesbocchio:jasypt-spring-boot-starter:${jasyptVersion}"
+
+    implementation "io.swagger.core.v3:swagger-annotations:${swaggerVersion}"
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springDocVersion}"
+    implementation "com.zaxxer:HikariCP"
+    runtimeOnly "org.postgresql:postgresql"
+    implementation "io.leangen.graphql:graphql-spqr-spring-boot-starter:1.0.1"
+    implementation "io.opentelemetry:opentelemetry-api"
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-graphql'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation "net.javacrumbs.shedlock:shedlock-spring:${shedlockVersion}"
+    implementation "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:${shedlockVersion}"
+    implementation "net.logstash.logback:logstash-logback-encoder:${logstashLogbackEncoderVersion}"
+    implementation "com.slack.api:slack-api-client:${slackApiClientVersion}"
+    implementation "com.github.ben-manes.caffeine:caffeine"
+
+    testAnnotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+    testImplementation "io.projectreactor:reactor-test"
+    // Testcontainers 2.x renamed every module artifact (postgresql -> testcontainers-postgresql,
+    // junit-jupiter -> testcontainers-junit-jupiter). The old coordinates do not exist at 2.x, so
+    // leaving them pinned held the modules at 1.x while the BOM moved core to 2.x.
+    testImplementation "org.testcontainers:testcontainers"
+    testImplementation "org.testcontainers:testcontainers-junit-jupiter"
+    testImplementation "org.testcontainers:testcontainers-postgresql"
+    testImplementation "org.wiremock:wiremock-standalone:3.9.2"
+}
+
+// Gradle Flyway tasks (flywayMigrate, flywayInfo, flywayRepair) must use the app's history table and
+// validation, so keep this in sync with spring.flyway in application.yaml. Pass url/user/password with -Pflyway.*
+flyway {
+    table = 'flyway_schema_history_v2'
+    locations = ['filesystem:src/main/resources/db/migration']
+    outOfOrder = true
+    validateMigrationNaming = true
+    baselineOnMigrate = true
+    baselineVersion = '1.2026.10.20'
+}
+
+springBoot {
+    buildInfo()
+}
+
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+
+tasks.withType(Test).configureEach {
+    environment 'JASYPT_ENCRYPTOR_PASSWORD', 'oss-test-only-password'
+    // Pass through environment variables for OAuth credentials
+    environment 'EXTERNAL_APPLICATION_API_AUTH_PROVIDER_CLIENT_ID', (System.getenv('EXTERNAL_APPLICATION_API_AUTH_PROVIDER_CLIENT_ID') ?: 'test-placeholder')
+    environment 'EXTERNAL_APPLICATION_API_AUTH_PROVIDER_CLIENT_SECRET', (System.getenv('EXTERNAL_APPLICATION_API_AUTH_PROVIDER_CLIENT_SECRET') ?: 'test-placeholder')
+    
+    testLogging {
+        exceptionFormat = TestExceptionFormat.FULL
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                def output = "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+                def startItem = '|  ', endItem = '  |'
+                def repeatLength = startItem.length() + output.length() + endItem.length()
+                println('\n' + ('-' * repeatLength) + '\n' + startItem + output + endItem + '\n' + ('-' * repeatLength))
+            }
+        }
+    }
+}
+
+// mapstruct-generated mapper classes excluded from coverage
+// (lombok-generated code is excluded via @Generated annotation per lombok.config)
+def jacocoExclude = ["**/mapper/**MapperImpl.class"]
+
+tasks.jacocoTestReport {
+    afterEvaluate {
+        getClassDirectories().setFrom(classDirectories.files.collect {
+            fileTree(dir: it, exclude: jacocoExclude)
+        })
+    }
+}
+
+tasks.jacocoTestCoverageVerification {
+    afterEvaluate {
+        getClassDirectories().setFrom(classDirectories.files.collect {
+            fileTree(dir: it, exclude: jacocoExclude)
+        })
+    }
+}

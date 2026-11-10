@@ -1,0 +1,21 @@
+meta {
+  name: GET userinfo
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{authUrl}}/userinfo
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Requires the collection PKCE access token (inherit).
+}

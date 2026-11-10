@@ -1,0 +1,112 @@
+[
+  {
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000001",
+      "employeeId": "100001",
+      "displayName": "Tester, One",
+      "givenName": "One",
+      "surname": "Tester",
+      "mail": "one.tester@example.com",
+      "mailNickname": "onetester",
+      "userType": "Member",
+      "jobTitle": "Software Engineer",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "onetester"
+    }
+  },
+  {
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000002",
+      "employeeId": "100002",
+      "displayName": "Tester, Two",
+      "givenName": "Two",
+      "surname": "Tester",
+      "mail": "two.tester@example.com",
+      "mailNickname": "twotester",
+      "userType": "Member",
+      "jobTitle": "Software Engineer",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "twotester"
+    }
+  },
+  {
+    "managerId": "00000000-0000-0000-0000-000000000004",
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000003",
+      "employeeId": "100003",
+      "displayName": "Tester, Three",
+      "givenName": "Three",
+      "surname": "Tester",
+      "mail": "three.tester@example.com",
+      "mailNickname": "threetester",
+      "userType": "Member",
+      "jobTitle": "Software Engineer",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "threetester"
+    }
+  },
+  {
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000004",
+      "employeeId": "100004",
+      "displayName": "Manager, Test",
+      "givenName": "Test",
+      "surname": "Manager",
+      "mail": "test.manager@example.com",
+      "mailNickname": "testmanager",
+      "userType": "Member",
+      "jobTitle": "Engineering Manager",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "testmanager"
+    }
+  },
+  {
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000005",
+      "employeeId": "100005",
+      "displayName": "Tester, Five",
+      "givenName": "Five",
+      "surname": "Tester",
+      "mail": "five.tester@example.com",
+      "mailNickname": "fivetester",
+      "userType": "Member",
+      "jobTitle": "Software Engineer",
+      "accountEnabled": true,
+      "onPremisesSamAccountName": "fivetester"
+    }
+  },
+  {
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000007",
+      "employeeId": "100007",
+      "displayName": "Inactive, Tester",
+      "givenName": "Tester",
+      "surname": "Inactive",
+      "mail": "inactive.tester@example.com",
+      "mailNickname": "inactivetester",
+      "userType": "Member",
+      "jobTitle": "Software Engineer",
+      "accountEnabled": false,
+      "onPremisesSamAccountName": "inactivetester"
+    }
+  },
+  {
+    "user": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-0000-0000-000000000006",
+      "displayName": "Cap-Test",
+      "givenName": "CAP",
+      "surname": "TEST",
+      "mail": "cap.test@example.com",
+      "mailNickname": "cap.test",
+      "userType": "Member",
+      "accountEnabled": true
+    }
+  }
+]

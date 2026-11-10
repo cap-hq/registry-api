@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: © 2026 CVS Health and/or one of its affiliates.
+SPDX-License-Identifier: Apache-2.0 --><html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registry Authorization Server</title>
+    <link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.css" th:href="@{/webjars/bootstrap/css/bootstrap.css}" />
+    <link rel="stylesheet" href="/assets/css/signin.css" th:href="@{/assets/css/signin.css}" />
+</head>
+<body>
+<div>
+    <div>
+        <a class="form-signin w-100 m-auto btn btn-light btn-block bg-white" href="/auth/oauth2/authorization/azure-idp" role="link" style="margin-top: 10px">
+            <img src="/assets/img/azure.png" th:src="@{/assets/img/azure.png}" width="20" style="margin-right: 5px;" alt="Sign in with Azure">
+            Sign in with Azure
+        </a>
+    </div>
+</div>
+</body>
+</html>

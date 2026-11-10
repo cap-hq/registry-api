@@ -1,0 +1,30 @@
+// SPDX-FileCopyrightText: © 2026 CVS Health and/or one of its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+package com.cvshealth.cap.registry.persistent;
+
+import com.cvshealth.cap.registry.model.TeamMemberRole;
+import com.cvshealth.cap.registry.persistent.base.UpdatableEntity;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
+
+
+@Entity
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+@SuperBuilder
+@Table(name = "team_member")
+public class TeamMemberEntity extends UpdatableEntity {
+
+    @EmbeddedId
+    private TeamMemberId id;
+
+    @Column(name = "role", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private TeamMemberRole role;
+
+}

@@ -1,0 +1,30 @@
+meta {
+  name: POST client
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{authUrl}}/v1/client
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "type": "USER_PKCE",
+    "clientId": "registry-demo-client",
+    "clientName": "Registry demo client",
+    "redirectUrls": [
+      "http://localhost:3000/callback"
+    ],
+    "accessTokenExpireMinutes": 60,
+    "refreshTokenExpireMinutes": 1440
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

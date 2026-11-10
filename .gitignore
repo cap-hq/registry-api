@@ -1,0 +1,73 @@
+### Gradle ###
+.gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+/bin/
+
+# The wrapper jar MUST stay tracked, or ./gradlew fails for anyone who clones.
+# It is re-included explicitly right after the *.jar rule below (last match wins).
+
+### Compiled output ###
+*.class
+
+# Package files
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+### Secrets / local credentials — never commit ###
+**/secrets.yml
+**/secrets.yaml
+.env
+*.env.local
+
+# NOTE: application-local.yml IS tracked in all three modules — it is ordinary
+# local profile config that optionally imports the untracked secrets.yml above.
+
+### Logs & crash dumps ###
+*.log
+hs_err_pid*
+replay_pid*
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.run/
+
+### Eclipse / STS ###
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+### VS Code ###
+.vscode/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### jenv ###
+.java-version
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+
+# Local Docker stack build stamps (scripts/registry-stack)
+.registry-stack/

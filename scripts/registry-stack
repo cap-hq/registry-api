@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: © 2026 CVS Health and/or one of its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+# Starts and stops the local Registry Docker stack: infra (Postgres x2,
+# Adminer, Mailpit) and the three services (registry-auth, registry,
+# registry-rollup) on the `cap-local` Docker network.
+#
+# Usage:
+#   scripts/registry-stack                         interactive menu
+#   scripts/registry-stack infra up|down [--yes]
+#   scripts/registry-stack app NAME up|down [--force]    NAME: registry|registry-auth|registry-rollup
+#   scripts/registry-stack services up|down [--force]    all three services
+#   scripts/registry-stack everything up|down [--force|--yes]   infra + services
+#   scripts/registry-stack status
+#
+# Data: only `infra down` and `everything down` remove the databases (every
+# team, member, OAuth client and token). They ask for confirmation unless
+# --yes is given. Service down/up never touches data.
+#
+# Java apps are rebuilt (gradle + docker build) only when their inputs changed
+# since the last successful image build (stamps in .registry-stack/).
+# `--force` rebuilds regardless.
+#
+# Environment (all optional):
+#   REGISTRY_JAVA_CACERTS  directory containing a Java `cacerts` that trusts your corporate proxy CA
+#   REGISTRY_IMAGE_PREFIX  registry prefix for base images, e.g. registry.example.com/
+#                          (default: Docker Hub)
+#
+# Requires bash 3.2+ and Docker with BuildKit.
+
+set -eu
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+STAMP_DIR="$REPO_ROOT/.registry-stack"
+NET="cap-local"
+IMAGE_PREFIX="${REGISTRY_IMAGE_PREFIX:-}"
+CACERTS_DIR="${REGISTRY_JAVA_CACERTS:-}"
+JAVA_BASE_IMAGE="${IMAGE_PREFIX}azul/zulu-openjdk-alpine:25"
+
+JAVA_APPS="registry-auth registry registry-rollup"
+INFRA="cap-mailpit cap-adminer postgres-cap-registry-auth postgres-cap-registry"
+# Service containers are named cap-<key>. Each also gets a network alias equal to
+# its key, so the localdocker YAMLs still reach registry, registry-auth and
+# registry-rollup by those hostnames.
+JAVA_CONTAINERS="cap-registry-auth cap-registry cap-registry-rollup"
+ASSUME_YES=0
+
+say()  { printf '==> %s\n' "$*"; }
+note() { printf '    %s\n' "$*"; }
+die()  { printf 'registry-stack: %s\n' "$*" >&2; exit 1; }
+
+app_port()  { case "$1" in registry) echo 8100 ;; registry-auth) echo 8200 ;; registry-rollup) echo 8150 ;; esac; }
+app_debug() { case "$1" in registry) echo 5006 ;; registry-auth) echo 5005 ;; registry-rollup) echo 5007 ;; esac; }
+valid_app() { case "$1" in registry|registry-auth|registry-rollup) return 0 ;; *) return 1 ;; esac; }
+app_container() { echo "cap-$1"; }
+
+confirm_destructive() {
+    # confirm_destructive "what will be lost"
+    [ "$ASSUME_YES" -eq 1 ] && return 0
+    printf '!!  %s\n    Type "yes" to continue: ' "$1"
+    local a; read -r a || a=""
+    [ "$a" = yes ] || die "aborted; nothing removed."
+}
+
+container_id() { docker ps -aq -f "name=^${1}\$"; }
+rm_container() {
+    # -v also removes anonymous volumes (Postgres data dir), so "data is lost" is literally true
+    if [ -n "$(container_id "$1")" ]; then note "removing $1"; docker rm -fv "$1" >/dev/null; else note "$1: not present"; fi
+}
+net_exists() { docker network inspect "$NET" >/dev/null 2>&1; }
+
+# Volumes left behind by containers removed without -v (older versions of this
+# script, or other tooling). Pruning is global, so only warn.
+dangling_volumes_warn() {
+    local n; n="$(docker volume ls -qf dangling=true | wc -l | tr -d ' ')"
+    [ "$n" -gt 0 ] || return 0
+    echo "WARNING: $n dangling Docker volume(s) remain from earlier teardowns and may hold old database data." >&2
+    echo "         Review with: docker volume ls -f dangling=true" >&2
+    echo "         Remove with: docker volume prune   (affects EVERY Docker project on this machine)" >&2
+}
+
+# Containers on the network that this script does not manage (e.g. started by
+# other tooling). They would block `docker network rm`, so refuse up front.
+foreign_containers_check() {
+    net_exists || return 0
+    local known=" $INFRA $JAVA_CONTAINERS " others="" c
+    for c in $(docker ps -a --filter "network=$NET" --format '{{.Names}}'); do
+        case "$known" in *" $c "*) ;; *) others="$others $c" ;; esac
+    done
+    [ -z "$others" ] || die "other containers are attached to $NET:$others -- stop them first (they are not managed by this script)."
+}
+
+check_files() {
+    local missing=0 f
+    for f in "$REPO_ROOT/gradlew" "$REPO_ROOT/Dockerfile.registry-localstack" \
+             "$REPO_ROOT"/registry/src/main/resources/application-localdocker.yml \
+             "$REPO_ROOT"/registry-auth/src/main/resources/application-localdocker.yml \
+             "$REPO_ROOT"/registry-rollup/src/main/resources/application-localdocker.yml; do
+        [ -f "$f" ] || { printf 'Missing required file: %s\n' "$f" >&2; missing=1; }
+    done
+    if [ -n "$CACERTS_DIR" ] && [ ! -f "$CACERTS_DIR/cacerts" ]; then
+        printf 'REGISTRY_JAVA_CACERTS is set but %s/cacerts does not exist\n' "$CACERTS_DIR" >&2; missing=1
+    fi
+    command -v docker >/dev/null 2>&1 || { echo "docker not found on PATH" >&2; missing=1; }
+    [ "$missing" -eq 0 ] || die "stopped; fix the above and retry."
+}
+
+# ---------------------------------------------------------------- infra
+start_or_run() {
+    # start_or_run NAME WAIT_CMD docker-run-args...
+    local name="$1" wait_cmd="$2"; shift 2
+    if [ -n "$(container_id "$name")" ]; then
+        note "$name exists -- reusing (infra down first for a fresh one)"
+        docker start "$name" >/dev/null
+    else
+        docker run -d --name "$name" --network "$NET" "$@" >/dev/null
+    fi
+    if [ -n "$wait_cmd" ]; then
+        printf '    waiting for %s...' "$name"
+        until docker exec "$name" $wait_cmd >/dev/null 2>&1; do sleep 1; done
+        echo " ready"
+    fi
+}
+
+infra_up() {
+    say "1/4 Network $NET"
+    if net_exists; then note "already exists"; else docker network create "$NET" >/dev/null; note "created"; fi
+
+    say "2/4 Postgres (registry) -> localhost:5432"
+    start_or_run postgres-cap-registry "pg_isready -q -d postgres -U root" \
+        --network-alias db -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password \
+        -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=registry \
+        -p 127.0.0.1:5432:5432 "${IMAGE_PREFIX}postgres:17-alpine"
+
+    say "3/4 Postgres (registry_auth) -> localhost:5435"
+    start_or_run postgres-cap-registry-auth "pg_isready -q -d postgres -U root" \
+        --network-alias db_auth -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password \
+        -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=registry_auth \
+        -p 127.0.0.1:5435:5432 "${IMAGE_PREFIX}postgres:17-alpine"
+
+    say "4/4 Adminer (http://localhost:8999) + Mailpit (http://localhost:8025)"
+    start_or_run cap-adminer "" -p 127.0.0.1:8999:8080 "${IMAGE_PREFIX}adminer"
+    start_or_run cap-mailpit "" --network-alias mailpit -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 "${IMAGE_PREFIX}axllent/mailpit:v1.33.0"
+    say "Infra is up."
+}
+
+infra_down() {
+    local app
+    for app in $JAVA_CONTAINERS; do
+        if [ -n "$(container_id "$app")" ]; then
+            die "service container $app still exists; run 'services down' first (or 'everything down')."
+        fi
+    done
+    foreign_containers_check
+    confirm_destructive "infra down removes the Postgres containers: every team, member, OAuth client and token is lost."
+    say "Removing infra containers (database data is lost)"
+    local c; for c in $INFRA; do rm_container "$c"; done
+    say "Removing network $NET"
+    if net_exists; then docker network rm "$NET" >/dev/null; note "removed"; else note "not present"; fi
+    dangling_volumes_warn
+}
+
+# ---------------------------------------------------------------- apps
+needs_build() {
+    local app="$1" stamp="$STAMP_DIR/$1.stamp" changed
+    docker image inspect "$app" >/dev/null 2>&1 || { note "image $app missing"; return 0; }
+    [ -f "$stamp" ] || { note "no build stamp"; return 0; }
+    changed="$(cd "$REPO_ROOT" && find "$app/src" "$app/build.gradle" build.gradle settings.gradle gradle.properties \
+               Dockerfile.registry-localstack -type f -newer "$stamp" -print 2>/dev/null | head -1)"
+    if [ -n "$changed" ]; then note "changed since last build: $changed"; return 0; fi
+    return 1
+}
+
+build_java() {
+    local app="$1" port; port="$(app_port "$app")"
+    say "Building $app jar"
+    (cd "$REPO_ROOT" && ./gradlew ":$app:build" -x test -x jacocoTestReport -x jacocoTestCoverageVerification) \
+        || die "gradle build failed for $app"
+    say "Building $app image"
+    if [ -n "$CACERTS_DIR" ]; then
+        docker build -f "$REPO_ROOT/Dockerfile.registry-localstack" \
+            --build-arg "MODULE=$app" --build-arg "PORT=$port" --build-arg "IMAGE_PREFIX=$IMAGE_PREFIX" \
+            --build-arg CACERTS=cacerts --build-context "corpcerts=$CACERTS_DIR" \
+            -t "$app" "$REPO_ROOT"
+    else
+        docker build -f "$REPO_ROOT/Dockerfile.registry-localstack" \
+            --build-arg "MODULE=$app" --build-arg "PORT=$port" --build-arg "IMAGE_PREFIX=$IMAGE_PREFIX" \
+            --build-context "corpcerts=docker-image://$JAVA_BASE_IMAGE" \
+            -t "$app" "$REPO_ROOT"
+    fi
+}
+
+run_java() {
+    local app="$1" port debug secrets profiles cname
+    cname="$(app_container "$app")"
+    port="$(app_port "$app")"; debug="$(app_debug "$app")"
+    secrets="$REPO_ROOT/$app/src/main/resources/secrets.yml"
+    profiles=local,localdocker
+    # The stack is a greenfield preview: registry-auth seeds the registry-user-pkce
+    # client (db/seed) only under the opt-in bootstrap profile.
+    if [ "$app" = registry-auth ]; then profiles=$profiles,bootstrap; fi
+    set -- -d --name "$cname" --network-alias "$app" --network "$NET" -p "127.0.0.1:$port:$port" -p "127.0.0.1:$debug:$debug" \
+        -e "SPRING_PROFILES_ACTIVE=$profiles" \
+        -e "JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:$debug"
+    if [ -f "$secrets" ]; then set -- "$@" --env-file "$secrets"; else note "no $app/src/main/resources/secrets.yml; starting without it"; fi
+    # The network alias (the bare key) is what the localdocker YAMLs resolve.
+    say "Starting $cname (http://localhost:$port, JDWP localhost:$debug)"
+    docker run "$@" "$app" >/dev/null || die "failed to start $cname"
+}
+
+app_up() {
+    local app="$1" force="${2:-}" cname rebuilt=0
+    valid_app "$app" || die "unknown app '$app' (registry|registry-auth|registry-rollup)"
+    net_exists || die "infra is not up; run 'infra up' first."
+    cname="$(app_container "$app")"
+    if [ "$force" = "--force" ] || needs_build "$app"; then
+        build_java "$app"
+        mkdir -p "$STAMP_DIR" && touch "$STAMP_DIR/$app.stamp"
+        rebuilt=1
+    else
+        say "$app: no changes since last build; reusing image"
+    fi
+    if [ -n "$(container_id "$cname")" ]; then
+        if [ "$rebuilt" -eq 1 ]; then say "Replacing $cname"; docker rm -fv "$cname" >/dev/null
+        else say "Starting existing $cname"; docker start "$cname" >/dev/null; say "Logs: docker logs -f $cname"; return 0; fi
+    fi
+    run_java "$app"
+    say "Logs: docker logs -f $cname"
+}
+
+app_down() {
+    valid_app "$1" || die "unknown app '$1'"
+    say "Stopping $1 (databases untouched)"; rm_container "$(app_container "$1")"
+}
+
+services_up() {
+    net_exists || die "infra is not up; run 'infra up' first."
+    local app; for app in $JAVA_APPS; do app_up "$app" "${1:-}"; done
+    say "Services are up: Auth http://localhost:8200/auth  Registry http://localhost:8100/api/graphql  Rollup http://localhost:8150/rollup"
+}
+
+services_down() {
+    say "Removing service containers"
+    local c; for c in cap-registry-rollup cap-registry cap-registry-auth; do rm_container "$c"; done
+}
+
+everything_up() {
+    infra_up
+    services_up "${1:-}"
+}
+
+everything_down() {
+    foreign_containers_check
+    confirm_destructive "everything down removes services AND databases: every team, member, OAuth client and token is lost."
+    ASSUME_YES=1
+    services_down
+    infra_down
+    say "Everything is down. The next 'up' starts with empty databases."
+}
+
+status() { docker ps -a --filter "network=$NET" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'; }
+
+# ---------------------------------------------------------------- menu
+menu() {
+    local choice action
+    while true; do
+        echo
+        echo "registry-stack: start/stop the local Registry Docker stack. Pick a target, then up or down."
+        echo "   1) infra            postgres x2, adminer, mailpit          down DELETES ALL DATA"
+        echo "   2) registry-auth                                           down keeps data"
+        echo "   3) registry                                                down keeps data"
+        echo "   4) registry-rollup                                         down keeps data"
+        echo "   5) services         2 + 3 + 4                              down keeps data"
+        echo "   6) everything       infra + services                       down DELETES ALL DATA"
+        echo "   s) status"
+        echo "   q) quit"
+        echo "   (to rebuild images: scripts/registry-stack services up --force)"
+        printf '> '
+        read -r choice || return 0
+        case "$choice" in
+            s|S) status; continue ;;
+            q|Q) return 0 ;;
+            1|2|3|4|5|6) ;;
+            *) echo "unknown choice"; continue ;;
+        esac
+        printf 'up or down? [u/d] '
+        read -r action || return 0
+        case "$action" in u|U) action=up ;; d|D) action=down ;; *) echo "expected u or d"; continue ;; esac
+        case "$choice:$action" in
+            1:up) infra_up ;;                 1:down) infra_down ;;
+            2:*) app_"$action" registry-auth ;;
+            3:*) app_"$action" registry ;;
+            4:*) app_"$action" registry-rollup ;;
+            5:*) services_"$action" ;;
+            6:up) everything_up ;;            6:down) everything_down ;;
+        esac
+    done
+}
+
+usage() { sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+
+main() {
+    # strip --yes anywhere on the command line
+    local args="" a
+    for a in "$@"; do if [ "$a" = "--yes" ]; then ASSUME_YES=1; else args="$args $a"; fi; done
+    # shellcheck disable=SC2086
+    set -- $args
+    check_files
+    case "${1:-menu}" in
+        menu) menu ;;
+        infra) case "${2:-}" in up) infra_up ;; down) infra_down ;; *) usage 1 ;; esac ;;
+        app) [ $# -ge 3 ] || usage 1; case "$3" in up) app_up "$2" "${4:-}" ;; down) app_down "$2" ;; *) usage 1 ;; esac ;;
+        services) case "${2:-}" in up) services_up "${3:-}" ;; down) services_down ;; *) usage 1 ;; esac ;;
+        everything) case "${2:-}" in up) everything_up "${3:-}" ;; down) everything_down ;; *) usage 1 ;; esac ;;
+        status) status ;;
+        -h|--help|help) usage 0 ;;
+        *) usage 1 ;;
+    esac
+}
+
+main "$@"

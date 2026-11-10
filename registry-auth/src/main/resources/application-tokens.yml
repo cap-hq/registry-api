@@ -1,0 +1,87 @@
+app:
+  oauth2:
+    authorize-url:
+      custom-parameters:
+        - name: agent
+          description: "The agent associated with the user authentication request, if applicable. This is used to include a custom agent claim in the user identity JWT"
+          values:
+            - copilot
+            - claude-code
+
+  # custom scopes for user consent to their user data and JWT authorization claims
+  # Valid values for scope-type are defined in CustomScopeType
+  scopes:
+    user-consent:
+      - scope-type: APP_USER
+    authorization:
+      - scope-type: REGISTRY
+        default-scope: true
+      - scope-type: OPEN_POLICY_AGENT
+
+  # Custom JWT claims - config for additional claims that use custom configurable attributes like application compliance types
+  jwt:
+    # Claims that filter on information classification (app_information_classification_restricted) are only in effect
+    # when this is true, and the registry is only asked for informationClassification then. Turn it on per environment
+    # once the registry there serves the field. Off by default so this service can be deployed before the registry.
+    information-classification:
+      enabled: false
+    claims:
+      access-token:
+        - name: app_pci
+          scope-type: REGISTRY
+          type: application
+          application:
+            complianceTypes:
+              - pci
+        # Replaces app_pci, which is removed once no consumer reads it. Broader than app_pci: RESTRICTED also
+        # covers restricted-pii applications, because the classification cannot tell the two tags apart.
+        # Only in effect when app.jwt.information-classification.enabled is true.
+        - name: app_information_classification_restricted
+          scope-type: REGISTRY
+          type: application
+          application:
+            informationClassification: RESTRICTED
+        - name: app_external_id
+          scope-type: REGISTRY
+          type: application
+          attribute: externalId
+        - name: client_teams
+          scope-type: OPEN_POLICY_AGENT
+          type: authClient
+          attribute: teams
+        - name: client_privilege
+          scope-type: OPEN_POLICY_AGENT
+          type: authClient
+          attribute: clientPrivilege
+        - name: agent
+          type: custom
+          source: AUTH_PARAMETER
+          attribute: agent
+      id-token:
+        - name: groups
+          scope-type: REGISTRY
+          type: team
+        - name: agent
+          type: custom
+          source: AUTH_PARAMETER
+          attribute: agent
+
+  registered-client:
+    allow-multiple-secrets-per-client: true
+    default-expire-days: 95
+    max-expire-days: 120
+    missing-expire-extension-days: 30
+    # max number of client ids accepted by POST /v1/clients/search
+    max-search-client-ids: 1000
+    client-secret-length: 10  # min 10, max 72 (BCrypt input limit)
+  access-token:
+    default-expire-minutes: 30
+    # Optional: per-scope access token TTL overrides (in minutes), keyed by CustomScopeType enum name.
+    # When a scope has an entry, the issued access token's expiry is overridden to this value.
+    scope-expire-minutes:
+      OPEN_POLICY_AGENT: 480
+      REGISTRY: 30
+  refresh-token:
+    default-expire-minutes: 720                    # 12 hours
+    default-session-expire-minutes: 1440           # 24 hours
+    insecure-redirect-session-expire-minutes: 240  # 4 hours — for http:// redirect URIs, except loopback host (127.0.0.1, [::1], localhost) + PKCE

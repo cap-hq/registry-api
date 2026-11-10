@@ -1,0 +1,6 @@
+# Build context for Dockerfile.registry-localstack: only the module boot jars are needed.
+*
+!registry/build/libs/registry-0.0.1-SNAPSHOT.jar
+!registry-auth/build/libs/registry-auth-0.0.1-SNAPSHOT.jar
+!registry-rollup/build/libs/registry-rollup-0.0.1-SNAPSHOT.jar
+!*/build/libs/opentelemetry-javaagent.jar

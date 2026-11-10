@@ -1,0 +1,12 @@
+meta {
+  name: Registry Admin
+  seq: 5
+}
+
+auth {
+  mode: inherit
+}
+
+docs {
+  Privileged operations. GraphQL requests inherit the collection OAuth token and need a user with the relevant admin permission (`AdminTask`, Auth `Admin`). All of it needs a user token – `X-Api-Secret` carries no user and is rejected.
+}

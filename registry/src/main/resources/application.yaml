@@ -1,0 +1,334 @@
+# --------------------
+#Application Specific
+# --------------------
+service:
+  context-path: /api
+  logging:
+    excluded-endpoints:
+      - "/actuator*/**"
+      - "/swagger*/**"
+      - "/health*/**"
+      - "/api/actuator*/**"
+      - "/api/swagger*/**"
+      - "/api/health*/**"
+
+# --------------------
+# Server Configuration
+# --------------------
+server:
+  max-http-request-header-size: 80KB
+  compression:
+    enabled: true
+    mime-types: application/json
+
+# --------------------
+# Spring Configuration
+# --------------------
+spring:
+  config:
+    import:
+      - classpath:/application-cloud.yml
+      - classpath:/application-jobs.yml
+      - classpath:/application-external-integrations.yml
+  profiles:
+    group:
+      local: local-cors
+      test: local-cors
+  application:
+    name: registry
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
+  mvc:
+    async:
+      request-timeout: 120000  # 2 minutes for long-running endpoints
+  web:
+    resources:
+      add-mappings: false
+  main:
+    banner-mode: off
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    properties:
+      mail.enabled: ${MAIL_ENABLED:false}
+      mail.default.from: ${MAIL_DEFAULT_FROM:noreply@example.com}
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    database: postgresql
+    show-sql: false
+    open-in-view: false
+  #    generate-ddl: true
+  #    hibernate.ddl-auto: update
+
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 2
+      maximum-pool-size: 4
+      max-lifetime: 1800000
+      pool-name: hikari-cp
+      connection-timeout: 30000
+      idle-timeout: 30000
+      keepalive-time: 1
+
+  flyway:
+    enabled: true
+    validateMigrationNaming: true
+    table: flyway_schema_history_v2
+    baseline-on-migrate: true
+    baseline-version: "1.2026.10.20"
+    outOfOrder: true
+
+  # ---------------------
+  #  multiple jwt issuers
+  # ---------------------
+  # profiles that define their own sources replace this list entirely
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          sources:
+            # Registry auth server (registry-auth)
+            - jwk-set-uri: ${REGISTRY_AUTH_HOST:http://localhost:8200}/auth/oauth2/jwks
+              issuer-uri: ${REGISTRY_AUTH_HOST:http://localhost:8200}/auth
+
+# --------------------
+# GraphQL
+# --------------------
+graphql:
+  spqr:
+    http:
+      endpoint: /api/graphql
+      mvc:
+        executor: blocking
+    relay:
+      connection-check-relaxed: true
+      spring-data-compatible: false
+
+# --------------------
+# Api Information
+# --------------------
+info:
+  app:
+    name: registry
+    description: registry spring boot microservice
+    version: 0.0.1-SNAPSHOT
+    encoding: UTF-8
+    java:
+      source: 25
+      target: 25
+
+# Swagger configuration
+springdoc:
+  packages-to-scan: com.cvshealth.cap.registry
+  paths-to-match: /api/**
+  paths-to-exclude: /api/**/claims/**
+  swagger-ui:
+    enabled: true
+    path: /api/swagger/swagger-ui.html
+  api-docs:
+    enabled: true
+    path: /api/swagger/api-docs
+
+# --------------------
+# Actuator
+# --------------------
+management:
+  security:
+    enabled: false
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    httptrace:
+      excluded-endpoints: /favicon.ico,/actuator/**,/metrics/**,/api/actuator/**
+  endpoints:
+    web:
+      base-path: /api/actuator
+      exposure:
+        include:
+          - health
+          - flyway
+          - info
+
+jasypt:
+  encryptor:
+    bean: encryptorBean
+
+registry-auth:
+  base-uri: ${REGISTRY_AUTH_HOST:http://localhost:8200}/auth/v1
+  # api-secret is required and has no default; it is shared with registry-auth and must not be blank
+
+registry-rollup:
+  codec:
+    max-in-memory-size: 8388608  # 8MB; increase if DataBufferLimitException occurs on large responses
+
+registry-ui-url: ""   # optional; Registry UI link included in notifications when set
+registry-ui-name: Registry UI   # UI name used in notifications
+
+# -------------------------
+# Application Configuration
+# -------------------------
+app:
+  environment-name: Registry
+  support:
+    contact-info: "Contact the Registry app support team for questions"
+  date-formatter:
+    time-zone: "America/New_York"
+    date-format: "yyyy-MM-dd"
+    time-format: "h:mm a z"
+  notification:
+    template:
+      path: "/message-templates/freemarker/"
+      encoding: "UTF-8"
+    non-user-auth-client-created:
+      message-template: "text/non-user-auth-client-created.ftl"
+
+  types:
+    compliance-types:
+      - name: pci
+        label: PCI (Credit/Debit Card Info)
+      - name: phi
+        label: PHI (Medical Records, Claims Information)
+      - name: pii
+        label: PII (Names, Addresses, Phone Numbers)
+      - name: restricted-pii
+        label: Restricted-PII (SSNs, Gov't ID Numbers) (implies PII)
+  application-priorities:
+    - priority: 1
+      label: Tier 1 (Mission critical applications)
+      isDefault: false
+    - priority: 2
+      label: Tier 2 (Business critical applications)
+      isDefault: false
+    - priority: 3
+      label: Tier 3 (Business operational applications)
+      isDefault: true
+    - priority: 4
+      label: Tier 4 (Other applications)
+      isDefault: false
+    - priority: 5
+      label: Tier 5 (Not applicable)
+      isDefault: false
+
+  application:
+    cloud:
+      default: gcp
+    tenant:
+      default: general
+    external-id:
+      validate: false           # requires external service provider config before enabling
+      immutable: false
+      validate-owner-title: []
+      mismatch-message-template: "text/application-external-id-mismatch.ftl"
+      docs-url: "UNDEFINED"
+    transfer:
+      message-template: "text/application-transfer.ftl"
+
+  validation:
+    application:
+      name:
+        regex: "^[a-z][a-z0-9]+$"
+        min-length: 3
+        max-length: 48
+      description:
+        max-length: 500
+    team:
+      name:
+        regex: "^[a-zA-Z][a-zA-Z0-9_-]+$"
+        min-length: 2
+        # set at 70 to match snow assignment group max length
+        max-length: 70
+        # applied to the lower-cased name; must stay in step with TeamMapper.normalizeTeamName
+        normalization-regex: "[^a-z0-9]"
+        format-exempt-prefix: "Personal"
+
+  max-allowed-team-memberships: 100     # maximum number of teams a user can be a member of; used to prevent excessive team membership growth and JWT size
+  team:
+    external-name-prefix: ""
+    rollup:
+      enabled: false # set to true to allow team rollup info to be added to team GraphQL queries.  cache-refresh job must be enabled and running to keep the rollup info up to date.
+    available-clouds:
+      enabled: false # set to true to expose availableClouds on team GraphQL types
+  legacy-compliance-types:
+    # true keeps complianceTypes as the input that drives informationClassification. false is the cutover: complianceTypes
+    # is hidden from the API input, informationClassification is authoritative, and the tags are no longer written.
+    # The schema is built at startup, so changing this needs a restart.
+    enabled: true
+
+  cache:
+    redis:
+      enabled: false
+    ttl:
+      default-ttl-in-minutes: 1
+      ttl-in-minutes:
+        cache_cloud_tenants_for_team: 1  # TTL for cloud tenant authorization per team
+        team_rollup_info: 70  # allow for some buffer between shared team rollup job full refresh runs
+        personal_team_rollup_info: 490  # optional: separate TTL for personal team L1 cache entries; allow for some buffer between personal team rollup job full refresh runs
+    hybrid:
+      l1-max-size: 1000
+      l1-cache-ttl-in-minutes: 5
+      l2-cache-ttl-in-minutes: 70
+      l2-cache-key-prefix: "registry:cache:"
+      l2-cache-batch-size: 100
+
+  # -------------------------
+  # Security Configuration
+  # -------------------------
+  admin:
+    line-business:
+      enabled: false
+    authorized-teams: []
+
+  cors:
+    allowed-origin-patterns:
+        - http://localhost:*
+    max-age: 3600
+    allowed-methods:
+      - POST
+      - GET
+      - OPTIONS
+      - DELETE
+      - HEAD
+      - PUT
+    allowed-headers:
+      - Content-Type
+      - Accept
+      - X-Requested-With
+      - Authorization
+      - traceparent
+      - tracestate
+
+  auth-client:
+    allow-multiple-versions-per-client: true
+    # Switch to GET /clients (fetch-all) when a single request needs more than this many distinct auth client IDs.
+    # Set to N_total * 0.5 once the total auth client count exceeds ~200; default of 100 is appropriate below that.
+    # Must not exceed the auth service limit set by app.registered-client.max-search-client-ids (default 1000).
+    client-fetch-size: 100
+    team-role: MEMBER
+    redirect-uri:
+      allowed-domains:
+        - example.com
+      allowed-protocols:
+        - https
+      allow-localhost:
+        secure: true
+        insecure: true
+
+  audit:
+    database:
+      enabled: true
+      deltas-only: true
+      exclude-metadata: true
+
+  slack:
+    enabled: false   # when true, app.slack.token (APP_SLACK_TOKEN) is required
+    app-name: App Registry Notifications
+    post-message-retries: 3
+    conversation-list-retries: 3
+
+  metrics:
+    prefix: registry # namespace prefix prepended to OTEL meter and instrument names

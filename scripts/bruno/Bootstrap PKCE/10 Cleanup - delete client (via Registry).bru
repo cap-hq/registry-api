@@ -1,0 +1,37 @@
+meta {
+  name: 10 Cleanup - delete client (via Registry)
+  type: graphql
+  seq: 7
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($clientId: String!, $clientVersion: Int) {
+    deleteAuthClient(clientId: $clientId, clientVersion: $clientVersion)
+  }
+}
+
+body:graphql:vars {
+  {
+    "clientId": "{{demoClientId}}",
+    "clientVersion": null
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}
+
+docs {
+  Destructive. Standalone. Deletes the demo client `demoClientId` through Registry so both Registry's record and the mirrored Registry Auth client go. Runs as the signed-in user, who needs delete rights on the owning team. Leaves the bootstrap client, the team and your member record in place.
+}

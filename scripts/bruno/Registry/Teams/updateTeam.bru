@@ -1,0 +1,50 @@
+meta {
+  name: updateTeam
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation updateTeam($team: TeamRequestInput!) {
+    updateTeam(team: $team) {
+      id
+      version
+      name
+      type
+      description
+      emailList
+      slackChannel
+      slackChannelName
+      externalName
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "team": {
+      "name": "{{teamName}}",
+      "type": "SHARED",
+      "description": "Updated from the Registry Bruno collection"
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}

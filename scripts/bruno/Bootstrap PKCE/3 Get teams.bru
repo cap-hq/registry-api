@@ -1,0 +1,60 @@
+meta {
+  name: 3 Get teams
+  type: graphql
+  seq: 1
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query getTeams($paginationInput: PaginationInput!, $filter: TeamSearchFilterInput) {
+    getTeams(paginationInput: $paginationInput, filter: $filter) {
+      totalRecordCount
+      teams {
+        id
+        name
+        type
+        description
+        createUser
+        createTimestamp
+        members {
+          externalId
+          name
+          role
+        }
+        authClients {
+          clientId
+          clientVersion
+          type
+        }
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "paginationInput": {
+      "pageNumber": 1,
+      "pageSize": 20
+    },
+    "filter": {}
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}
+
+docs {
+  Every team Registry knows about. After `bootstrap.sh` on a fresh stack, expect exactly one: the team you named, type SHARED, with you as a member and the bootstrap client attached.
+}

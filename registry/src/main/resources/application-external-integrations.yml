@@ -1,0 +1,24 @@
+external-application-api:   # base-uri, auth-provider.base-uri, and auth-provider.scope are set per environment
+  auth-provider:
+    grant-type: client_credentials
+    timeout-in-seconds: 30
+    refresh-buffer-in-seconds: 60
+
+app:
+  external-resources: []
+  external-resource-check:    # contract each external resource source implements; checked before app delete/update
+    graphql:
+      query-name: "getResources"
+    rest:
+      endpoint: "getResources"
+      max-retries: 5
+  api-resource-check:
+    enabled: false
+    url: ""   # set per profile - see application-dev.yml / application-prod.yml
+    max-retries: 3
+    timeout-seconds: 10
+    blocking-environment: production
+    blocking-states:
+      - active
+    blocking-approval-states:
+      - approved

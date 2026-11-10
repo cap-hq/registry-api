@@ -1,0 +1,51 @@
+meta {
+  name: syncChangeEvent
+  type: graphql
+  seq: 6
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($request: ChangeEventUpdateRequestInput!) {
+    syncChangeEvent(request: $request) {
+      eventId
+      version
+      eventType
+      eventAction
+      entityId
+      syncStatus
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "request": {
+      "clientId": "{{oauthPkceClientId}}",
+      "eventId": 1,
+      "syncStatus": "PROCESSED"
+    }
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}
+
+docs {
+  `syncStatus`: `UNPROCESSED` | `PROCESSED` | `ERROR`.
+}

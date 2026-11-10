@@ -1,0 +1,37 @@
+meta {
+  name: deleteTeamMemberByExternalId
+  type: graphql
+  seq: 3
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  mutation($teamName: String!, $externalId: String!) {
+    deleteTeamMemberByExternalId(teamName: $teamName, externalId: $externalId)
+  }
+}
+
+body:graphql:vars {
+  {
+    "teamName": "{{teamName}}",
+    "externalId": "{{memberExternalId}}"
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}
+
+docs {
+  Destructive.
+}

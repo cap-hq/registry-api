@@ -1,0 +1,98 @@
+app:
+  job:
+    auth-client:
+      client-id: registry-rollup-jobs   # not necessary an actual client ID; needed for change event retrieval
+    information-classification-backfill:
+      enabled: false   # set to true only while running POST /admin/job/backfillInformationClassification
+      batch-size: 500
+    cache-refresh:
+      enabled: ${app.cache.redis.enabled:false}
+      team-rollup:
+        cron-expression: "0 0 */1 * * *"
+        batch-size: 500
+        parallelism:
+          threads: 4
+          queue-capacity: ${app.job.cache-refresh.team-rollup.batch-size}
+          wait-for-tasks-to-complete-on-shutdown: false
+        initial-sync:
+          enabled: false
+          delay-mins: 2
+        personal-teams:
+          cron-expression: "0 30 */8 * * *"
+          batch-size: 1000
+      team-change-event:
+        enabled: false
+        cron-expression: "0 */5 * * * *"
+        batch-size: 500
+    azure-sync:
+      enabled: false
+      cleanup-enabled: true
+      cron-expression: "0 0 5 * * *"  # daily at 5 AM (UTC)
+      job-lock-time: "30m"
+      fetch-batch-size: 100
+      update-batch-size: 20
+      app-transfer-message-template: "text/application-transfer-by-system.ftl"
+      team-transfer-message-template: "text/team-transfer-by-system.ftl"
+      support:
+        team-name: registry-admin
+        app-transfer-message-template: "text/application-transfer-to-support-by-system.ftl"
+        team-transfer-message-template: "text/team-transfer-to-support-by-system.ftl"
+    azure-manager-sync:
+      enabled: false
+      omit-manager-level: []
+      cron-expression: "0 0 6 * * *"  # daily at 6 AM (UTC)
+      job-lock-time: "30m"
+      fetch-batch-size: 100
+      update-batch-size: 20
+      azure-batch-size: 20
+    auth-provider-client-check:
+      enabled: false
+      cron-expression: "0 0 16 * * *"  # daily at 4 PM (UTC)
+      job-lock-time: "30m"
+      clients: []
+    auth-client-cleanup:
+      enabled: false
+      cron-expression: "0 0 8 * * MON"  # weekly at 8 AM (UTC), after auth-client-expiration-check
+      job-lock-time: "30m"
+      min-age-days: 30
+      inactivity-days: 30
+    auth-client-expiration-check:
+      enabled: false
+      cron-expression: "0 0 7 * * MON"  # weekly at 7 AM (UTC)
+      job-lock-time: "30m"
+      expiration-days-threshold: 30
+      age-days-threshold: 60
+      send-slack-notifications: true
+      send-email-notifications: true
+      delete-expired-clients: false
+      delete-expired-legacy-clients: false
+      expired-client-retention-days: 7
+      legacy-client-delete-age-days-threshold: 90
+      message-template: "text/auth-client-expiration.ftl"
+      docs-url: "UNDEFINED"   # set to the URL of the external ID documentation page in each environment
+    auth-client-expiration-check-nightly:
+      enabled: false
+      cron-expression: "0 0 12 * * *"  # daily at 12 PM (UTC)
+      job-lock-time: "30m"
+      expiration-days-threshold: 1
+      expiration-days-lower-bound: 0
+      age-days-threshold: 9999
+      send-slack-notifications: true
+      send-email-notifications: true
+      expired-client-retention-days: 0
+      legacy-client-delete-age-days-threshold: 9999
+      message-template: "text/auth-client-expiration-24h.ftl"
+      docs-url: "UNDEFINED"   # set to the URL of the external ID documentation page in each environment
+      notification-subject: "URGENT: Auth client secret expiring within 24 hours - Action Required"
+      last-access-token-issued-within-hours: 24
+    external-id-sync:
+      enabled: false
+      cron-expression: "0 30 5 * * *"  # daily at 5 AM (UTC)
+      job-lock-time: "30m"
+      fetch-batch-size: 100
+      system-update-message-template: "text/application-external-id-updated.ftl"
+      docs-url: "UNDEFINED"   # set to the URL of the external ID documentation page in each environment
+    usage-statistics:
+      enabled: false
+      cron-expression: "@hourly"
+      job-lock-time: "14m"

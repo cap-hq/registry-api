@@ -1,0 +1,22 @@
+meta {
+  name: Bootstrap
+  seq: 2
+}
+
+headers {
+  X-Api-Secret: {{apiSecret}}
+}
+
+auth {
+  mode: none
+}
+
+docs {
+  Companion to `bootstrap/bootstrap.sh` (does not run it). Preflight for a freshly started stack: service
+  discovery, JWKS, Registry health, and a look at the seeded `registry-user-pkce` client in Registry Auth.
+  Runs with `X-Api-Secret` only (no browser login) because Auth's client REST is secret-protected.
+
+  Order: 1 → 2, then continue in **Bootstrap PKCE**.
+
+  Configure in `.env`: `REGISTRY_API_SECRET`, `BOOTSTRAP_CLIENT_ID` (what the script registered).
+}

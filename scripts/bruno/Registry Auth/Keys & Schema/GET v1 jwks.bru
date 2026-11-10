@@ -1,0 +1,21 @@
+meta {
+  name: GET v1 jwks
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{authUrl}}/v1/jwks
+  body: none
+  auth: none
+}
+
+headers {
+  X-Api-Secret: {{apiSecret}}
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

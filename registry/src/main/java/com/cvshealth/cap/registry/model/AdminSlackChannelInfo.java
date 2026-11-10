@@ -1,0 +1,16 @@
+// SPDX-FileCopyrightText: © 2026 CVS Health and/or one of its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+package com.cvshealth.cap.registry.model;
+
+import lombok.Builder;
+import lombok.Getter;
+
+@Builder
+@Getter
+public class AdminSlackChannelInfo {
+    public String id;
+    public String name;
+    public boolean isPrivate;
+    public int memberCount;
+}

@@ -1,0 +1,62 @@
+meta {
+  name: 4 Get bootstrap team
+  type: graphql
+  seq: 2
+}
+
+post {
+  url: {{registryUrl}}/graphql
+  body: graphql
+  auth: inherit
+}
+
+body:graphql {
+  query getTeamByName($name: String!) {
+    getTeamByName(name: $name) {
+      id
+      version
+      name
+      type
+      description
+      externalName
+      createUser
+      createTimestamp
+      updateUser
+      updateTimestamp
+      members {
+        id
+        name
+        externalId
+        role
+      }
+      authClients {
+        clientId
+        clientVersion
+        type
+      }
+      applications {
+        id
+        name
+      }
+    }
+  }
+}
+
+body:graphql:vars {
+  {
+    "name": "{{bootstrapTeamName}}"
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("no GraphQL errors", function() {
+    expect(res.getBody().errors).to.be.undefined;
+  });
+}
+
+docs {
+  The team `bootstrap.sh` created (`BOOTSTRAP_TEAM_NAME`). `members` should list your directory account; `authClients` should list `BOOTSTRAP_CLIENT_ID` as USER_PKCE. This is the same read-back the script uses to settle an unclear write.
+}

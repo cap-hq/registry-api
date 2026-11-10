@@ -1,0 +1,167 @@
+# --------------------
+#Application Specific
+# --------------------
+service:
+  context-path: /rollup
+  logging:
+    ignore-events:
+      - ENTRY
+    excluded-endpoints:
+      - "/actuator*/**"
+      - "/swagger*/**"
+      - "/health*/**"
+      - "/metrics/**"
+
+# --------------------
+# Server Configuration
+# --------------------
+server:
+  max-http-request-header-size: 80KB
+  compression:
+    enabled: true
+    mime-types: application/json
+
+# --------------------
+# Spring Configuration
+# --------------------
+spring:
+  profiles:
+    group:
+      local: local-cors
+      test: local-cors
+  application:
+    name: registry-rollup
+  web:
+    resources:
+      add-mappings: false
+  main:
+    banner-mode: off
+  # Azure AD tenant: set spring.cloud.azure.profile.tenant-id (env SPRING_CLOUD_AZURE_PROFILE_TENANT_ID) per environment
+
+  # ---------------------
+  #  multiple jwt issuers
+  # ---------------------
+  # profiles that define their own sources replace this list entirely
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          sources:
+            # Registry auth server (registry-auth)
+            - jwk-set-uri: ${REGISTRY_AUTH_HOST:http://localhost:8200}/auth/oauth2/jwks
+              issuer-uri: ${REGISTRY_AUTH_HOST:http://localhost:8200}/auth
+
+# --------------------
+# GraphQL
+# --------------------
+graphql:
+  spqr:
+    http:
+      endpoint: /rollup/graphql
+      mvc:
+        executor: blocking
+    relay:
+      connection-check-relaxed: true
+      spring-data-compatible: false
+
+# --------------------
+# Api Information
+# --------------------
+info:
+  app:
+    name: registry-rollup
+    description: registry-rollup spring boot microservice
+    version: 0.0.1-SNAPSHOT
+    encoding: UTF-8
+    java:
+      source: 25
+      target: 25
+
+# --------------------
+# Actuator
+# --------------------
+management:
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    httptrace:
+      excluded-endpoints: /favicon.ico,/actuator/**,/metrics/**,/rollup/actuator/**
+  endpoints:
+    web:
+      base-path: /rollup/actuator
+      exposure:
+        include:
+          - health
+          - info
+
+registry:
+  base-uri: ${REGISTRY_API_HOST:http://localhost:8100}/api/graphql
+  # api-secret has no default and must be set; it is the registry's X-Api-Secret, sent to the registry and
+  # accepted from it, and must not be blank
+  codec:
+    max-in-memory-size: 8388608  # 8MB; increase if DataBufferLimitException occurs on large responses
+
+jasypt:
+  encryptor:
+    bean: encryptorBean
+
+app:
+  line-business:
+    enabled: false   # adds line-of-business rollup fields to the GraphQL schema; enable per environment
+    # organization.name (default "ORG") and organization.manager-external-id are set per environment; used in the
+    # LOB name when a manager has no LOB association in rollup
+  cors:
+    max-age: 3600
+    allowed-origin-patterns:   # set per environment
+      - http://localhost:*
+    allowed-methods:
+      - POST
+      - GET
+      - OPTIONS
+      - DELETE
+      - HEAD
+      - PUT
+    allowed-headers:
+      - Content-Type
+      - Accept
+      - X-Requested-With
+      - Authorization
+      - traceparent
+      - tracestate
+  manager-title-limit:
+    SVP,
+    Senior Vice President,
+    EVP,
+    Executive Vice President
+  metrics:
+    prefix: registry # namespace prefix prepended to OTEL meter and instrument names
+  rollup:
+    executor:
+      user:
+        pool-size: 10
+        queue-capacity: 10000
+        wait-for-tasks-to-complete-on-shutdown: true
+        await-termination-seconds: 60
+      team:
+        pool-size: 3
+        queue-capacity: 500
+        wait-for-tasks-to-complete-on-shutdown: true
+        await-termination-seconds: 30
+    title-rankings:
+      rankings:
+        mgr: 1
+        manager: 1
+        sr mgr: 2
+        senior manager: 2
+        ld dir: 3
+        lead director: 3
+        exec dir: 4
+        executive director: 4
+        vp: 5
+        vice president: 5
+        svp: 6
+        senior vice president: 6
+        evp: 7
+        executive vice president: 7

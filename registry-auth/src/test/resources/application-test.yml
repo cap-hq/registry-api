@@ -1,0 +1,74 @@
+server:
+  servlet:
+    context-path: /auth
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          azure-idp:
+            provider: azure
+            client-id: abc123
+            client-secret: abc123
+            scope:
+              - App.User
+              - openid
+              - email
+              - profile
+            client-name: Sign in with Mock OIDC
+            authorization-grant-type: authorization_code
+        provider:
+          azure:
+            issuer-uri: http://localhost:4012
+
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 2
+      max-lifetime: 1800000
+      pool-name: hikari-cp
+      connection-timeout: 30000
+      idle-timeout: 30000
+      keepalive-time: 1
+
+  flyway:
+    enabled: true
+    validateMigrationNaming: true
+    outOfOrder: true
+    url: ${spring.datasource.hikari.jdbc-url}
+    user: ${spring.datasource.hikari.username}
+    password: ${spring.datasource.hikari.password}
+
+registry-auth:
+  api-secret: test
+  client-secrets: |
+    [{"clientId":"grafana","clientSecret":"test1"},{"clientId":"grafanaSync","clientSecret":"test5"},{"clientId":"auth-code-flow","clientSecret":"test2"},{"clientId":"client-credentials-flow","clientSecret":"test3"},{"clientId":"CapUIClient","clientSecret":"test4"},{"clientId":"apiplatform","clientSecret":"test6"}]
+
+registry:
+  base-uri: http://localhost:8333/api/graphql
+  api-secret: test
+
+app:
+  admin:
+    authorized-teams:
+      Registry-Admin
+  jwt:
+    information-classification:
+      enabled: true
+  oauth2:
+    retrieve-user-info: false
+  registered-client:
+    allow-multiple-secrets-per-client: false
+  security:
+    # YAML sequence form, as deployed in application-cvs.yml; see ClientBlockListConfigTests
+    blocked-client-ids:
+      - code-scanning-check
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: INFO
