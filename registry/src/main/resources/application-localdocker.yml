@@ -1,0 +1,72 @@
+# --------------------------------------------------------------
+# Profile for running Registry inside the local Docker stack
+# (network `cap-local`, driven by `scripts/registry-stack`).
+#
+# Self-contained: activated as SPRING_PROFILES_ACTIVE=localdocker on top of
+# application.yaml only. Secrets arrive as environment variables from
+# `docker run --env-file registry/src/main/resources/secrets.yml`:
+#   REGISTRY_API_SECRET
+#
+# Do not set spring.profiles.include/active here: Spring Boot forbids it in
+# profile-specific files and the app exits at startup.
+# --------------------------------------------------------------
+server:
+  port: 8100
+
+spring:
+  cloud:
+    gcp:
+      core:
+        enabled: false
+
+  datasource:
+    url: jdbc:postgresql://db:5432/registry
+    username: root
+    password: password
+
+  flyway:
+    url: jdbc:postgresql://db:5432/registry
+    user: root
+    password: password
+
+  # Mail goes to the mailpit container (UI at http://localhost:8025).
+  mail:
+    host: mailpit
+    port: 1025
+    properties:
+      mail.enabled: true
+      mail.default.from: noreply@example.com
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          sources:
+            # Registry Auth in this stack. issuer-uri must match registry-auth's
+            # app.oauth2.issuer exactly (compared as a claim string, not fetched).
+            # jwk-set-uri uses the container name so no host.docker.internal
+            # resolution is needed inside containers (Colima-compatible).
+            - jwk-set-uri: http://registry-auth:8200/auth/oauth2/jwks
+              issuer-uri: http://host.docker.internal:8200/auth
+
+# No Redis in the local stack. The starter is on the classpath, so Boot would
+# otherwise probe localhost:6379 and report the service DOWN.
+management:
+  health:
+    redis:
+      enabled: false
+
+graphql:
+  spqr:
+    gui:
+      enabled: true
+      endpoint: /api/gui
+
+# Reach the other two services by their container name on cap-local.
+registry-auth:
+  base-uri: http://registry-auth:8200/auth/v1
+  api-secret: ${REGISTRY_API_SECRET}
+
+registry-rollup:
+  base-uri: http://registry-rollup:8150/rollup/graphql
+  api-secret: ${REGISTRY_API_SECRET}

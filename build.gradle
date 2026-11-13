@@ -81,21 +81,22 @@ subprojects {
                 details.useVersion postgreSQLVersion
                 details.because 'Enforce consistent PostgreSQL driver version'
             }
+            if (details.requested.group == 'com.google.guava' && details.requested.name == 'guava') {
+                details.useVersion guavaVersion
+                details.because 'CVE-2026-102554 (High): guava < 33.7.2-jre arrives via microsoft-graph-core → jwks-rsa 0.24.1'
+            }
         }
+    }
+
+    // Mockito's inline mock maker needs a Java agent. Attaching it at JVM start (as the
+    // Mockito docs recommend) avoids the runtime self-attach that newer JDKs warn about
+    // and will eventually disallow (JEP 451).
+    configurations {
+        mockitoAgent
     }
 
     dependencies {
         implementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
-
-        // Transitive-only floors: a constraint is a minimum, so it yields to a higher
-        // BOM-managed version once one ships but never drags the BOM's version down.
-        constraints {
-            ['tomcat-embed-core', 'tomcat-embed-el', 'tomcat-embed-websocket'].each { artifact ->
-                implementation("org.apache.tomcat.embed:${artifact}:${tomcatEmbedVersion}") {
-                    because 'Tomcat (Boot 4.1.1 BOM) has open CVEs'
-                }
-            }
-        }
 
         compileOnly "org.projectlombok:lombok:${lombokVersion}"
         annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
@@ -108,10 +109,11 @@ subprojects {
         testImplementation "org.springframework.boot:spring-boot-starter-test"
         testImplementation "org.junit.jupiter:junit-jupiter"
         testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+        mockitoAgent("org.mockito:mockito-core:${mockitoVersion}") { transitive = false }
         testImplementation "io.rest-assured:rest-assured:${restAssuredVersion}"
 
         // Testcontainers is intentionally NOT declared here: registry moved to the
-        // Testcontainers 2.x (renamed module) artifacts unversioned via the Boot 4.1.1
+        // Testcontainers 2.x (renamed module) artifacts unversioned via the Boot 4.1.x
         // BOM, while registry-auth must stay pinned to the 1.x line/artifact names
         // (see its own build.gradle). A shared version here would force one module onto
         // the wrong major version, so each module declares its own testcontainers deps.
@@ -120,6 +122,7 @@ subprojects {
     test {
         useJUnitPlatform()
         finalizedBy tasks.jacocoTestReport
+        jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
 
         // Parallelism here is CROSS-MODULE only (org.gradle.parallel=true in
         // gradle.properties): api, auth and rollup run their test tasks concurrently.

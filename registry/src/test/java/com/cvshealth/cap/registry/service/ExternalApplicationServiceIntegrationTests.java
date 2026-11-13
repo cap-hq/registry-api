@@ -17,8 +17,9 @@ import java.util.Objects;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ExternalApplicationServiceIntegrationTests extends RegistryIntegrationTests {
+    // concrete type: exercises the package-private token helpers that are not part of the interface
     @Autowired
-    private ExternalApplicationService externalApplicationService;
+    private ExternalApplicationServiceImpl externalApplicationService;
 
     @Autowired
     private CacheManager cacheManager;
@@ -73,7 +74,7 @@ public class ExternalApplicationServiceIntegrationTests extends RegistryIntegrat
 
         // then
         assertThat(externalApp).isNotNull();
-        assertThat(externalApp.getCvsAppId()).isEqualTo(externalId);
+        assertThat(externalApp.getId()).isEqualTo(externalId);
         assertThat(externalApp.getSvp().getName()).isEqualTo("Svp Manager");
 
         // when
@@ -81,7 +82,7 @@ public class ExternalApplicationServiceIntegrationTests extends RegistryIntegrat
 
         // then external app is returned from the cache
         assertThat(externalApp).isNotNull();
-        assertThat(externalApp.getCvsAppId()).isEqualTo(externalId);
+        assertThat(externalApp.getId()).isEqualTo(externalId);
         assertThat(externalApp.getSvp().getName()).isEqualTo("Svp Manager");
 
         wiremockTestHelper.verifyAuthResponse(1);

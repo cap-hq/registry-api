@@ -29,6 +29,7 @@ import net.javacrumbs.shedlock.core.LockAssert;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.lang.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -48,6 +49,7 @@ public class ExternalIdSyncJob {
 
     private final ApplicationService applicationService;
     private final RegistryService registryService;
+    @Nullable
     private final ExternalApplicationService externalApplicationService;
     private final NotificationService notificationService;
 
@@ -73,6 +75,9 @@ public class ExternalIdSyncJob {
 
     @PostConstruct
     public void init() {
+        if (externalApplicationService == null) {
+            throw new IllegalStateException("app.job.external-id-sync.enabled requires app.external-application.enabled=true");
+        }
         jobDetailCountMetrics = Set.of(METRIC_REGISTRY_JOB_STATS_PROCESSED_COUNT,
                         METRIC_REGISTRY_JOB_STATS_METRIC_UPDATED_COUNT,
                         METRIC_REGISTRY_JOB_STATS_ERROR_COUNT)

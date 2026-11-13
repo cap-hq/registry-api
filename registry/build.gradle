@@ -35,26 +35,7 @@ dependencies {
          }
      }
 
-    // Transitive-only version floors (CVE fixes + one pre-release avoidance). A constraint
-    // is a minimum, so each of these still yields to a higher BOM-managed version once one
-    // is published.
     constraints {
-        implementation('ch.qos.logback:logback-core:1.5.38') {
-            because 'SNYK-JAVA-CHQOSLOGBACK-17675439'
-        }
-        implementation('org.apache.httpcomponents.core5:httpcore5-h2:5.4.3') {
-            because 'SNYK-JAVA-ORGAPACHEHTTPCOMPONENTSCORE5-17817217'
-        }
-        // Jackson 2 databind is forced globally (root build.gradle, jackson2DatabindVersion).
-        // Context for why registry in particular needs it: Boot 4.1.1 requests jackson 2.21.5,
-        // but com.azure:azure-core (via spring-cloud-azure-autoconfigure) drags in jackson-bom
-        // 2.22.0, which wins conflict resolution and shipped without the CVE-2026-59889 fix.
-        // spring-cloud-gcp 8.1.1 -> cloud-sql schemas 1.29.0 declares protobuf-java
-        // 4.36.0-RC1, and a release candidate outranks 4.35.1 in conflict resolution.
-        // 4.36.1 is the stable release that supersedes that RC.
-        implementation('com.google.protobuf:protobuf-java:4.36.1') {
-            because 'Keep a release candidate (4.36.0-RC1, via com.google.cloud.sql:schemas) off the production classpath'
-        }
         // Unreachable by any Boot/Spring version - arrives via
         // spring-cloud-azure-starter -> azure-core-amqp, which still declares 0.34.1.
         implementation('org.apache.qpid:proton-j:0.35.0') {
@@ -74,7 +55,7 @@ dependencies {
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
 
     annotationProcessor "jakarta.persistence:jakarta.persistence-api"
-    // Boot 4.1.1 manages Hibernate ORM 7.4.x; hibernate-63 build is binary-incompatible with it
+    // Boot 4.1.x manages Hibernate ORM 7.4.x; hibernate-63 build is binary-incompatible with it
     implementation "io.hypersistence:hypersistence-utils-hibernate-73:3.15.5"
 
     implementation "org.flywaydb:flyway-core"
@@ -104,14 +85,12 @@ dependencies {
     implementation "org.springframework.security:spring-security-oauth2-client"
 
     implementation "org.springframework.boot:spring-boot-starter-oauth2-resource-server"
-    // 5.24.1 targets Spring Boot 3.5; 7.4.0 is the line built against Boot 4.1
-    implementation platform("com.azure.spring:spring-cloud-azure-dependencies:7.4.0")
+    // 7.4.0 is the line built against Boot 4.1
+    implementation platform("com.azure.spring:spring-cloud-azure-dependencies:${springCloudAzureVersion}")
     implementation "com.azure.spring:spring-cloud-azure-starter"
     implementation "com.microsoft.graph:microsoft-graph:${microsoftGraphVersion}"
 
-    // 7.x targets Spring Boot 3.5 - its autoconfigure binds to Boot classes that were
-    // moved/removed in 4.x (health contributors, transaction + oauth2 resource server
-    // autoconfig). 8.x is the line built against spring-boot-dependencies 4.1.
+    // 8.x is the line built against spring-boot-dependencies 4.1.
     implementation platform("com.google.cloud:spring-cloud-gcp-dependencies:${springCloudGcpVersion}")
     implementation "com.google.cloud:spring-cloud-gcp-starter-sql-postgresql"
     // version managed by spring-cloud-gcp-dependencies above

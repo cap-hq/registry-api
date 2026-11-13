@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.cvshealth.cap.registry.config.MetricRegistryConfig.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -48,6 +49,13 @@ public class ExternalIdSyncJobTests {
 
     @Mock
     private Map<String, CountAndDurationMetricModel> countAndDurationMetrics;
+
+    @Test
+    public void givenNoExternalApplicationService_whenInit_thenFailsFast() {
+        ExternalIdSyncJob job = new ExternalIdSyncJob(applicationService, registryService, null, notificationService, countAndDurationMetrics);
+
+        assertThrows(IllegalStateException.class, job::init);
+    }
 
     @Test
     @Sql(scripts = "classpath:composite-data.sql")

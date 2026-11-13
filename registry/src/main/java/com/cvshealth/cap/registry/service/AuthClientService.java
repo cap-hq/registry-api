@@ -298,6 +298,11 @@ public class AuthClientService {
         if (currentVersionAuthClient != null) {
             serviceValidator.validateBetweenVersions(newVersionRequest, currentVersionAuthClient);
         }
+        AuthClientType type = currentVersionAuthClient == null ? newVersionRequest.getType() : currentVersionAuthClient.getType();
+        if (AuthClientType.USER_PKCE.equals(type)) {
+            log.warn(String.format("New client version not allowed for USER_PKCE: %s", newVersionRequest.getClientId()));
+            throw new BadRequestException(ExceptionReason.AUTH_CLIENT_NEW_VERSION_NOT_ALLOWED);
+        }
     }
 
     private AuthClientEntity updateEntity(AuthClientEntity entity, AuthClientRequest request) {

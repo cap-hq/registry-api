@@ -22,19 +22,38 @@ correlations being out of sync.
 - [Bruno](https://www.usebruno.com/) desktop app or `bru` CLI (collection work).
 - `oauth2c` ≥ 1.21.1 (only for `bootstrap.sh`).
 - Optional: a web application (any OIDC relying party) you want to sign in with.
+- An Entra ID (Azure) app registration for user sign-in — see the top-level
+  [README](../README.md#microsoft-entra-id-azure-app-registration).
 
-> **Colima users:** the Auth server's issuer URL (`http://host.docker.internal:8200/auth`)
-> must resolve on the host machine for `bootstrap.sh` and the browser PKCE sign-in flow.
-> Docker Desktop adds this automatically; with Colima add it once:
-> ```bash
-> sudo sh -c 'echo "127.0.0.1 host.docker.internal" >> /etc/hosts'
-> ```
+**Host names the browser flow depends on.** Two names must resolve to this machine:
 
-### 1. Service secrets — `<module>/src/main/resources/secrets.yml`
+| Name | Used for | Who adds it |
+|---|---|---|
+| `localhost` | the Azure redirect URI `http://localhost:8200/auth/login/oauth2/code/azure-idp`, the `bootstrap.sh` callback on `:9876`, and all Bruno `Local` URLs | the OS (`127.0.0.1 localhost` in `/etc/hosts`); it must not be removed or overridden |
+| `host.docker.internal` | the Auth issuer URL `http://host.docker.internal:8200/auth`, embedded in every token and validated by Registry and Rollup | Docker Desktop, automatically; Colima users add it once |
 
-Each Java module may have an untracked `secrets.yml` (gitignored via `**/secrets.yml`).
-`registry-stack` passes it to `docker run --env-file`, so it is a flat `KEY=value` file,
-not YAML. The one key that everything else depends on:
+Check both with `getent hosts` / `dscacheutil -q host -a name <name>`. On Colima add
+the second one:
+
+```bash
+sudo sh -c 'echo "127.0.0.1 host.docker.internal" >> /etc/hosts'
+```
+
+If `localhost` resolves only to `::1` (IPv6) the redirect still works, since the
+services bind both stacks; but if a security tool or VPN rewrites `/etc/hosts`, confirm
+the `127.0.0.1 localhost` line is still there before debugging sign-in.
+
+### 1. Shared API secret — `scripts/bruno/.env`
+
+Copy `scripts/bruno/.env.example` to `scripts/bruno/.env` and set a non-empty
+`REGISTRY_API_SECRET`. See [`bruno/README.md`](bruno/README.md) for setup.
+
+Before any Docker call, `registry-stack` runs a preflight over this file and the three
+`secrets.yml` files below and prints one report of everything that needs fixing:
+a missing or placeholder `.env` secret, missing `secrets.yml` files (scaffolded for you),
+lines Docker's `--env-file` would reject, and a `REGISTRY_API_SECRET` that differs
+between files. Values are compared, never printed. The interactive menu waits for you
+to fix them and re-check; explicit commands exit with an error.
 
 ```
 REGISTRY_API_SECRET=<any string>
@@ -43,16 +62,38 @@ REGISTRY_API_SECRET=<any string>
 | Who reads it | As |
 |---|---|
 | Registry, Registry Auth, Registry Rollup | the value they accept in the `X-Api-Secret` header (`api-secret: ${REGISTRY_API_SECRET}`) |
-| `bootstrap.sh` (`local` target) | `REGISTRY_API_SECRET` env, else `registry-auth/src/main/resources/secrets.yml`, else a hidden prompt |
+| `bootstrap.sh` (`local` target) | `REGISTRY_API_SECRET` env, else `registry-auth/src/main/resources/secrets.yml`, else a hidden prompt; use the same value as Bruno |
 | Bruno | `REGISTRY_API_SECRET` in `scripts/bruno/.env` |
 
-**Correlation:** the same string must be in all three places. A mismatch shows up as
+**Correlation:** the same string must be used everywhere. A mismatch shows up as
 `401`/`403` on `Registry Auth / Registered Clients` and `Bootstrap` requests.
 
-Registry Auth additionally needs the Azure AD federation credentials
-(`SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_ID` / `_CLIENT_SECRET`, tenant id) in its
-`secrets.yml`. These authenticate the *user* against Azure AD; they are unrelated to the
-OAuth client secret in step 4.
+Each Java module also has an untracked `<module>/src/main/resources/secrets.yml`
+(gitignored via `**/secrets.yml`, never shipped). `registry-stack` passes it to
+`docker run --env-file`, so it is a flat `KEY=value` file, not YAML. It is the only way
+secrets reach a container; the script injects nothing with `-e`.
+
+**If a module's `secrets.yml` is missing, `registry-stack` creates it** from a built-in
+template with `change-me` placeholders, lists what it created, and stops so you can fill
+it in (menu mode waits for you to press Enter and re-checks). An existing file is never
+opened or modified. The preflight also reports a required key that is missing or still
+`change-me`. Keys per module:
+
+| Module | Required keys |
+|---|---|
+| `registry-auth` | `REGISTRY_API_SECRET`, `SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_ID`, `SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_SECRET`, `SPRING_CLOUD_AZURE_PROFILE_TENANT_ID` |
+| `registry` | `REGISTRY_API_SECRET` |
+| `registry-rollup` | `REGISTRY_API_SECRET` |
+
+`REGISTRY_API_SECRET` must be the same string in all three `secrets.yml` files and in
+`scripts/bruno/.env`. The services read it from `secrets.yml` (`--env-file`, and the
+copy packaged into the jar), exactly as a hand-started container would; Bruno and
+`bootstrap.sh` read `.env`.
+
+Registry Auth's Azure AD federation values authenticate the *user* against Azure AD;
+they are unrelated to the OAuth client secret in step 4. See the top-level
+[README](../README.md#microsoft-entra-id-azure-app-registration) for where each value
+comes from in the Azure portal and which Graph permissions the app needs.
 
 ### 2. Start the stack — `registry-stack`
 
@@ -69,17 +110,19 @@ Ports: Registry `8100` (`/api`), Registry Auth `8200` (`/auth`), Registry Rollup
 (`/rollup`), Adminer `8999`, Mailpit `8025`. Debuggers: auth `5005`, registry
 `5006`, rollup `5007`.
 
-Services run with `SPRING_PROFILES_ACTIVE=local,localdocker`; registry-auth additionally gets
-the opt-in `bootstrap` profile, under which its Flyway seed migrations create the public PKCE
-client `registry-user-pkce` with callback `http://localhost:9876/callback` — that is the only
-OAuth client that exists on a fresh stack. Without `bootstrap` the Auth database gets the
-schema only.
+All three services run with `SPRING_PROFILES_ACTIVE=localdocker`; registry-auth additionally
+gets the opt-in `bootstrap` profile, under which its Flyway seed migrations create the public
+PKCE client `registry-user-pkce` with callback `http://localhost:9876/callback` — that is
+the only OAuth client that exists on a fresh stack. Without `bootstrap` the Auth database gets
+the schema only. Each `application-localdocker.yml` is self-contained: a service's
+configuration is `application.yml` + `application-localdocker.yml` + its `secrets.yml`,
+nothing else. No other profile (`local`, `local-cors`, ...) is layered in.
 
 **Databases from before the Flyway flatten (October 2026) must be recreated.** Their
 `flyway_schema_history` lists the old per-feature migrations, which no longer exist, so the
 services refuse to start ("applied migration not resolved locally"). Run
 `scripts/registry-stack infra down` and then `up` for a fresh database; the same applies to
-any other Postgres on `localhost:5432` used under the `local` profile.
+any other Postgres on `localhost:5432` used when running an app outside Docker.
 
 ### 3. Create the admin team — `bootstrap/bootstrap.sh`
 
@@ -148,7 +191,7 @@ from Registry (the member/team created in step 3).
 
 | Value | Source of truth | Must equal |
 |---|---|---|
-| `REGISTRY_API_SECRET` | `*/src/main/resources/secrets.yml` of each service | `scripts/bruno/.env` `REGISTRY_API_SECRET`; `bootstrap.sh` secret |
+| `REGISTRY_API_SECRET` | `scripts/bruno/.env`, injected by `registry-stack` into all three services | `bootstrap.sh` secret |
 | OAuth client id | Registry Auth DB (`oauth2_registered_client`), created via Bruno | your app's OIDC provider config; Bruno `BOOTSTRAP_CLIENT_ID` |
 | OAuth client secret | returned once by Registry Auth on create/reset | your app's client-secret setting; Bruno `.env` `BOOTSTRAP_CLIENT_SECRET` (optional) |
 | Redirect URL | registered on the client in Auth | callback URL the browser is actually redirected to |
@@ -203,17 +246,57 @@ What keeps your data and what does not:
 - After a database wipe, the seed migrations recreate only `registry-user-pkce`; redo
   steps 3–5.
 - `app NAME down && up` recreates one container; use it after editing `secrets.yml`.
+- Changing `scripts/bruno/.env`'s API secret causes the next service startup to
+  recreate containers with a missing or different secret; databases are kept.
 - All containers join the `cap-local` Docker network. Services reach each other by
   container name (Docker DNS). `host.docker.internal` is used only for the Auth issuer
   URL (embedded in tokens) and must resolve on the **host machine** — Docker Desktop
-  does this automatically; Colima requires a one-time `/etc/hosts` entry (see below).
+  does this automatically; Colima requires a one-time `/etc/hosts` entry (see step 0).
 
 Environment variables (all optional):
 
 | Var | Purpose |
 |---|---|
-| `REGISTRY_JAVA_CACERTS` | directory with a Java `cacerts` trusting a corporate proxy CA |
+| `REGISTRY_JAVA_CACERTS` | directory with a Java `cacerts` trusting a corporate proxy CA (see below) |
 | `REGISTRY_IMAGE_PREFIX` | registry prefix for base images (default Docker Hub) |
 
+#### Corporate TLS-inspecting proxy
+
+Skip this unless a service log shows `PKIX path building failed` /
+`unable to find valid certification path` on an outbound HTTPS call. The first one
+you will hit is Auth fetching OIDC discovery from `login.microsoftonline.com`.
+It means your network re-signs TLS with a corporate CA that the stock Java
+`cacerts` inside the image does not trust. The fix is opt-in and local to your
+machine; nothing in the repo assumes a proxy.
+
+1. Get a `cacerts` that trusts the proxy CA. Easiest: a host JDK that already does.
+   Check with `keytool -list -cacerts -storepass changeit | grep -i <proxy-name>`.
+   If none does, copy a stock `cacerts` and import the CA's root PEM into the copy:
+
+   ```bash
+   mkdir -p ~/.registry-stack-certs
+   cp "$JAVA_HOME/lib/security/cacerts" ~/.registry-stack-certs/cacerts
+   keytool -importcert -trustcacerts -noprompt -alias corp-proxy-root \
+     -keystore ~/.registry-stack-certs/cacerts -storepass changeit -file proxy-root.pem
+   ```
+
+2. Export the **directory** that holds the file, in your shell profile so every
+   rebuild picks it up:
+
+   ```bash
+   export REGISTRY_JAVA_CACERTS="$HOME/.registry-stack-certs"   # or "$JAVA_HOME/lib/security"
+   ```
+
+3. Rebuild. The file is baked into the image at `docker build`, so changing the
+   variable has no effect on existing images:
+
+   ```bash
+   scripts/registry-stack services up --force
+   ```
+
+Images built from a shell where the variable is unset get the stock certs again, so
+make sure it is exported in whichever terminal (or agent) runs the rebuild.
+
+Required shared input: `scripts/bruno/.env` (`REGISTRY_API_SECRET`, see step 1).
 Per-service inputs: `<module>/src/main/resources/secrets.yml` (`--env-file`, see step 1)
 and `application-localdocker.yml`.

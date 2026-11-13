@@ -28,7 +28,7 @@ public class AuthClientServiceValidatorTest {
     // Config that allows custom schemes so per-URI validation passes and T-REG-6 type-check fires
     private static final RedirectUriConfig CUSTOM_SCHEME_CONFIG = new RedirectUriConfig(
             List.of("example.com"),
-            List.of("https", "cvs", "cvsapp", "cvsinternalapp", "cvs-internal"),
+            List.of("https", "example", "exampleapp", "exampleinternalapp", "example-internal"),
             null);
 
     AuthClientServiceValidator authClientServiceValidator = new AuthClientServiceValidator(
@@ -211,6 +211,56 @@ public class AuthClientServiceValidatorTest {
     }
 
     @Test
+    public void validateBetweenVersions_sameRedirectUrlsDifferentOrder_shouldPass() {
+        AuthClientRequest newVersionRequest = AuthClientRequest.builder()
+                .clientId("client1")
+                .type(AuthClientType.USER)
+                .redirectUrls(List.of("https://app.example.com/b", "https://app.example.com/a"))
+                .build();
+        OAuthClient currentVersionAuthClient = OAuthClient.builder()
+                .clientId("client1")
+                .type(AuthClientType.USER)
+                .redirectUrls(List.of("https://app.example.com/a", "https://app.example.com/b"))
+                .build();
+
+        assertDoesNotThrow(() -> authClientServiceValidator.validateBetweenVersions(newVersionRequest, currentVersionAuthClient));
+    }
+
+    @Test
+    public void validateBetweenVersions_nullRedirectUrls_shouldPass() {
+        AuthClientRequest newVersionRequest = AuthClientRequest.builder()
+                .clientId("client1")
+                .type(AuthClientType.USER)
+                .redirectUrls(null)
+                .build();
+        OAuthClient currentVersionAuthClient = OAuthClient.builder()
+                .clientId("client1")
+                .type(AuthClientType.USER)
+                .redirectUrls(null)
+                .build();
+
+        assertDoesNotThrow(() -> authClientServiceValidator.validateBetweenVersions(newVersionRequest, currentVersionAuthClient));
+    }
+
+    @Test
+    public void validateBetweenVersions_duplicateCountMismatch_shouldThrow() {
+        AuthClientRequest newVersionRequest = AuthClientRequest.builder()
+                .clientId("client1")
+                .type(AuthClientType.USER)
+                .redirectUrls(List.of("https://app.example.com/callback", "https://app.example.com/callback"))
+                .build();
+        OAuthClient currentVersionAuthClient = OAuthClient.builder()
+                .clientId("client1")
+                .type(AuthClientType.USER)
+                .redirectUrls(List.of("https://app.example.com/callback"))
+                .build();
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> authClientServiceValidator.validateBetweenVersions(newVersionRequest, currentVersionAuthClient));
+        assertThat(ex.getMessage()).isEqualTo(ExceptionReason.AUTH_CLIENT_REDIRECT_URLS_IMMUTABLE.label);
+    }
+
+    @Test
     public void validateBetweenVersions_typeMismatch_shouldThrow() {
         AuthClientRequest newVersionRequest = AuthClientRequest.builder()
                 .clientId("client1")
@@ -371,9 +421,7 @@ public class AuthClientServiceValidatorTest {
                 // Different size
                 Arguments.of(List.of(redirectUrl1), List.of(redirectUrl1, redirectUrl3)),
                 // Different elements
-                Arguments.of(List.of(redirectUrl1, redirectUrl2), List.of(redirectUrl1, redirectUrl3)),
-                // Same Element but different order
-                Arguments.of(List.of(redirectUrl2, redirectUrl1), List.of(redirectUrl1, redirectUrl2))
+                Arguments.of(List.of(redirectUrl1, redirectUrl2), List.of(redirectUrl1, redirectUrl3))
         );
     }
 
@@ -383,7 +431,7 @@ public class AuthClientServiceValidatorTest {
     // so per-URI scheme validation passes and the type-level PKCE check can fire.
 
     @ParameterizedTest
-    @ValueSource(strings = {"cvs://oauth/callback", "cvsapp://oauth/callback", "cvsinternalapp://oauth/callback", "cvs-internal://oauth/callback"})
+    @ValueSource(strings = {"example://oauth/callback", "exampleapp://oauth/callback", "exampleinternalapp://oauth/callback", "example-internal://oauth/callback"})
     void validateRedirectUris_customSchemeWithUserType_shouldThrowCustomSchemeRequiresPkce(String customUri) {
         AuthClientRequest request = AuthClientRequest.builder()
                 .clientId("mobile-client")
@@ -397,7 +445,7 @@ public class AuthClientServiceValidatorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"cvs://oauth/callback", "cvsapp://oauth/callback", "cvsinternalapp://oauth/callback", "cvs-internal://oauth/callback"})
+    @ValueSource(strings = {"example://oauth/callback", "exampleapp://oauth/callback", "exampleinternalapp://oauth/callback", "example-internal://oauth/callback"})
     void validateRedirectUris_customSchemeWithUserPkceType_shouldSucceed(String customUri) {
         AuthClientRequest request = AuthClientRequest.builder()
                 .clientId("mobile-client-pkce")
@@ -425,7 +473,7 @@ public class AuthClientServiceValidatorTest {
         AuthClientRequest request = AuthClientRequest.builder()
                 .clientId("mixed-client")
                 .type(AuthClientType.USER)
-                .redirectUrls(List.of("https://app.example.com/callback", "cvs://oauth/callback"))
+                .redirectUrls(List.of("https://app.example.com/callback", "example://oauth/callback"))
                 .build();
 
         assertThrows(BadRequestException.class, () -> customSchemeValidator.validateRedirectUris(request));

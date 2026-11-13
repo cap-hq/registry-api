@@ -80,9 +80,10 @@ public class AuthClientServiceValidator {
         }
     }
 
-    // Same size, same elements, and same order comparison
     private void validateRedirectUrlsBetweenVersions(List<String> newUrls, List<String> oldUrls) throws ApiException {
-        if (!newUrls.equals(oldUrls)) {
+        List<String> a = newUrls == null ? List.of() : newUrls.stream().sorted().toList();
+        List<String> b = oldUrls == null ? List.of() : oldUrls.stream().sorted().toList();
+        if (!a.equals(b)) {
             throw new BadRequestException(ExceptionReason.AUTH_CLIENT_REDIRECT_URLS_IMMUTABLE);
         }
     }

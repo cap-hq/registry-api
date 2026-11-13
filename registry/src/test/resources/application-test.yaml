@@ -24,8 +24,6 @@ server:
 # Prefix: spring.*
 # --------------------
 spring:
-  config:
-    import: optional:classpath:/secrets.yml
   application:
     name: registry
   web:
@@ -76,6 +74,7 @@ registry-ui-url: https://registry-ui.example.com/
 
 external-application-api:
   base-uri: http://localhost:8785
+  lookup-uri: "/application?id={id}"
   auth-provider:
     base-uri: http://localhost:8786
     scope: api-scope
@@ -96,6 +95,8 @@ app:
   application:
     external-id:
       validate: true
+  external-application:
+    enabled: true
   # L2 Cache
   cache:
     redis:

@@ -590,6 +590,118 @@ public class AuthClientServiceTests {
         assertDoesNotThrow(() -> service.validateNewClientVersion(request1, viewEntity1));
     }
 
+    @Test
+    public void validateNewClientVersion_throwsException_whenCurrentTypeIsUserPkce() {
+        // given multiple versions are allowed and team matches
+        when(authClientConfig.isAllowMultipleVersionsPerClient()).thenReturn(true);
+        String teamName = "team1";
+        String clientId = "client1";
+        String redirectUrl = "http://localhost:3000/callback";
+        AuthClientRequest request = AuthClientRequest.builder().clientId(clientId).teamName(teamName)
+                .type(AuthClientType.USER_PKCE).redirectUrls(List.of(redirectUrl)).build();
+        AuthClientViewEntity viewEntity = AuthClientViewEntity.builder().clientId(clientId).clientVersion(1)
+                .teamAuthClients(List.of(
+                        TeamAuthClientViewEntity.builder().id(
+                                TeamAuthClientViewId.builder()
+                                        .authClient(AuthClientViewEntity.builder().clientId(clientId).clientVersion(1).build())
+                                        .team(TeamViewEntity.builder().id(1L).name(teamName).build()).build()).build()
+                )).build();
+        when(registryAuthService.getClient(clientId))
+                .thenReturn(OAuthClient.builder().clientId(clientId).type(AuthClientType.USER_PKCE).redirectUrls(List.of(redirectUrl)).build());
+
+        // then exception is thrown because current client is USER_PKCE
+        ApiException thrown = assertThrows(BadRequestException.class, () -> service.validateNewClientVersion(request, viewEntity));
+        assertThat(thrown.getMessage()).isEqualTo(ExceptionReason.AUTH_CLIENT_NEW_VERSION_NOT_ALLOWED.label);
+    }
+
+    @Test
+    public void validateNewClientVersion_throwsException_whenTypeChangedFromUserToUserPkce() {
+        when(authClientConfig.isAllowMultipleVersionsPerClient()).thenReturn(true);
+        String teamName = "team1";
+        String clientId = "client1";
+        String redirectUrl = "http://localhost:3000/callback";
+        AuthClientRequest request = AuthClientRequest.builder().clientId(clientId).teamName(teamName)
+                .type(AuthClientType.USER_PKCE).redirectUrls(List.of(redirectUrl)).build();
+        AuthClientViewEntity viewEntity = AuthClientViewEntity.builder().clientId(clientId).clientVersion(1)
+                .teamAuthClients(List.of(
+                        TeamAuthClientViewEntity.builder().id(
+                                TeamAuthClientViewId.builder()
+                                        .authClient(AuthClientViewEntity.builder().clientId(clientId).clientVersion(1).build())
+                                        .team(TeamViewEntity.builder().id(1L).name(teamName).build()).build()).build()
+                )).build();
+        when(registryAuthService.getClient(clientId))
+                .thenReturn(OAuthClient.builder().clientId(clientId).type(AuthClientType.USER).redirectUrls(List.of(redirectUrl)).build());
+        doThrow(new BadRequestException(ExceptionReason.AUTH_CLIENT_TYPE_IMMUTABLE))
+                .when(validator).validateBetweenVersions(any(), any());
+
+        ApiException thrown = assertThrows(BadRequestException.class, () -> service.validateNewClientVersion(request, viewEntity));
+        assertThat(thrown.getMessage()).isEqualTo(ExceptionReason.AUTH_CLIENT_TYPE_IMMUTABLE.label);
+    }
+
+    @Test
+    public void validateNewClientVersion_throwsException_whenTypeChangedFromUserPkceToUser() {
+        when(authClientConfig.isAllowMultipleVersionsPerClient()).thenReturn(true);
+        String teamName = "team1";
+        String clientId = "client1";
+        String redirectUrl = "http://localhost:3000/callback";
+        AuthClientRequest request = AuthClientRequest.builder().clientId(clientId).teamName(teamName)
+                .type(AuthClientType.USER).redirectUrls(List.of(redirectUrl)).build();
+        AuthClientViewEntity viewEntity = AuthClientViewEntity.builder().clientId(clientId).clientVersion(1)
+                .teamAuthClients(List.of(
+                        TeamAuthClientViewEntity.builder().id(
+                                TeamAuthClientViewId.builder()
+                                        .authClient(AuthClientViewEntity.builder().clientId(clientId).clientVersion(1).build())
+                                        .team(TeamViewEntity.builder().id(1L).name(teamName).build()).build()).build()
+                )).build();
+        when(registryAuthService.getClient(clientId))
+                .thenReturn(OAuthClient.builder().clientId(clientId).type(AuthClientType.USER_PKCE).redirectUrls(List.of(redirectUrl)).build());
+        doThrow(new BadRequestException(ExceptionReason.AUTH_CLIENT_TYPE_IMMUTABLE))
+                .when(validator).validateBetweenVersions(any(), any());
+
+        ApiException thrown = assertThrows(BadRequestException.class, () -> service.validateNewClientVersion(request, viewEntity));
+        assertThat(thrown.getMessage()).isEqualTo(ExceptionReason.AUTH_CLIENT_TYPE_IMMUTABLE.label);
+    }
+
+    @Test
+    public void validateNewClientVersion_throwsException_whenGetOAuthClientReturnsNull_andRequestTypeIsUserPkce() {
+        when(authClientConfig.isAllowMultipleVersionsPerClient()).thenReturn(true);
+        String teamName = "team1";
+        String clientId = "client1";
+        AuthClientRequest request = AuthClientRequest.builder().clientId(clientId).teamName(teamName)
+                .type(AuthClientType.USER_PKCE).build();
+        AuthClientViewEntity viewEntity = AuthClientViewEntity.builder().clientId(clientId).clientVersion(1)
+                .teamAuthClients(List.of(
+                        TeamAuthClientViewEntity.builder().id(
+                                TeamAuthClientViewId.builder()
+                                        .authClient(AuthClientViewEntity.builder().clientId(clientId).clientVersion(1).build())
+                                        .team(TeamViewEntity.builder().id(1L).name(teamName).build()).build()).build()
+                )).build();
+        when(registryAuthService.getClient(clientId)).thenThrow(new RuntimeException("auth service unavailable"));
+
+        ApiException thrown = assertThrows(BadRequestException.class, () -> service.validateNewClientVersion(request, viewEntity));
+        assertThat(thrown.getMessage()).isEqualTo(ExceptionReason.AUTH_CLIENT_NEW_VERSION_NOT_ALLOWED.label);
+        verify(validator, never()).validateBetweenVersions(any(), any());
+    }
+
+    @Test
+    public void validateNewClientVersion_isValid_whenGetOAuthClientReturnsNull_andRequestTypeIsNotUserPkce() {
+        when(authClientConfig.isAllowMultipleVersionsPerClient()).thenReturn(true);
+        String teamName = "team1";
+        String clientId = "client1";
+        AuthClientRequest request = AuthClientRequest.builder().clientId(clientId).teamName(teamName)
+                .type(AuthClientType.USER).build();
+        AuthClientViewEntity viewEntity = AuthClientViewEntity.builder().clientId(clientId).clientVersion(1)
+                .teamAuthClients(List.of(
+                        TeamAuthClientViewEntity.builder().id(
+                                TeamAuthClientViewId.builder()
+                                        .authClient(AuthClientViewEntity.builder().clientId(clientId).clientVersion(1).build())
+                                        .team(TeamViewEntity.builder().id(1L).name(teamName).build()).build()).build()
+                )).build();
+        when(registryAuthService.getClient(clientId)).thenThrow(new RuntimeException("auth service unavailable"));
+
+        assertDoesNotThrow(() -> service.validateNewClientVersion(request, viewEntity));
+        verify(validator, never()).validateBetweenVersions(any(), any());
+    }
 
     @Test
     public void deleteOAuthClient_200() {

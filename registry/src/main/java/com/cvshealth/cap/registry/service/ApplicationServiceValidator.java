@@ -21,10 +21,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.graphql.client.GraphQlClientException;
+import org.springframework.lang.Nullable;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
+
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -42,6 +44,7 @@ public class ApplicationServiceValidator {
     private final List<ApplicationPriority> applicationPriorities;
     private final ValidationConstraints validationConstraints;
     private final RegistryRollupService registryRollupService;
+    @Nullable
     private final ExternalApplicationService externalApplicationService;
     private final ExternalResourceConstraintService externalResourceConstraintService;
     private final NotificationService notificationService;
@@ -71,6 +74,9 @@ public class ApplicationServiceValidator {
         if (validateExternalId) {
             Validate.notNull(externalIdOwnerTitle, "validate-owner-title has not been configured");
         }
+        if ((validateExternalId || isExternalIdImmutable) && externalApplicationService == null) {
+            throw new IllegalStateException("External Application Service Provider not configured");
+        }
         externalIdOwnerTitlePattern = MemberTitleUtil.createJobTitleLevelPattern(externalIdOwnerTitle);
         namePattern = Pattern.compile(nameConstraints().getRegex());
     }
@@ -94,12 +100,12 @@ public class ApplicationServiceValidator {
         }
         if (!validateComplianceTypes(request.getComplianceTypes())) {
             throw new BadRequestException(ExceptionReason.APPLICATION_COMPLIANCE_TYPES_INVALID,
-                    String.format(ExceptionReason.APPLICATION_COMPLIANCE_TYPES_INVALID.label, CollectionUtils.isNotEmpty(complianceTypeNames) ? complianceTypeNames.toString(): "[]"));
+                    String.format(ExceptionReason.APPLICATION_COMPLIANCE_TYPES_INVALID.label, CollectionUtils.isNotEmpty(complianceTypeNames) ? complianceTypeNames.toString() : "[]"));
         }
         if (!validatePriority(request.getPriority())) {
             List<Integer> priorities = applicationPriorities.stream().map(ApplicationPriority::getPriority).toList();
             throw new BadRequestException(ExceptionReason.APPLICATION_PRIORITY_INVALID,
-                    String.format(ExceptionReason.APPLICATION_PRIORITY_INVALID.label, CollectionUtils.isNotEmpty(priorities) ? priorities.toString(): "[]"));
+                    String.format(ExceptionReason.APPLICATION_PRIORITY_INVALID.label, CollectionUtils.isNotEmpty(priorities) ? priorities.toString() : "[]"));
         }
         return request;
     }
@@ -152,7 +158,8 @@ public class ApplicationServiceValidator {
         if (entity.getExternalId() != null) {
             if (StringUtils.isBlank(request.getExternalId())) {
                 throw new BadRequestException(ExceptionReason.APPLICATION_EXTERNAL_ID_CANNOT_BE_UNSET);
-            } else if (isExternalIdImmutable && !entity.getExternalId().equals(request.getExternalId())) {
+            } else if (isExternalIdImmutable && !entity.getExternalId().equals(request.getExternalId())
+                    && externalApplicationService != null) {
                 // Check if external app ID still exists; If not allow it to be changed
                 ExternalApplication externalApp = externalApplicationService.getExternalApplication(entity.getExternalId());
                 if (externalApp != null) {
@@ -242,9 +249,6 @@ public class ApplicationServiceValidator {
         if (StringUtils.isBlank(request.getExternalId())) {
             throw new BadRequestException(APPLICATION_EXTERNAL_ID_INVALID);
         }
-        if (TeamType.PERSONAL == team.getType()) {
-            throw new BadRequestException(APPLICATION_EXTERNAL_ID_NOT_ALLOWED);
-        }
         long start = System.currentTimeMillis();
         Optional<UserView> expectedExternalIdOwner = getRollupManager(team.getName());
         if (expectedExternalIdOwner.isEmpty()) {
@@ -262,7 +266,7 @@ public class ApplicationServiceValidator {
             String expectedExternalIdOwnerName = expectedExternalIdOwner.get().getFirstLastName();
             boolean externalIdOwnerMatch = true;
             if (externalApp.getSvp() == null || externalApp.getSvp().getName() == null) {
-                log.info("No SVP Assigned with external ID {} for application {}", externalApp.getCvsAppId(), externalApp.getName());
+                log.info("No SVP Assigned with external ID {} for application {}", externalApp.getId(), externalApp.getName());
                 return;
             }
             if (!expectedExternalIdOwnerName.equalsIgnoreCase(externalApp.getSvp().getName())) {
@@ -288,7 +292,7 @@ public class ApplicationServiceValidator {
             CountAndDurationMetricModel metric = countAndDurationMetrics.get(MetricRegistryConfig.METRIC_REGISTRY_VALIDATION_RESULT);
             metric.recordDuration(System.currentTimeMillis() - start, Attributes.of(
                     stringKey("validationType"), "application.externalId.owner-match",
-                    stringKey("status"), externalIdOwnerMatch ? "success": "error"
+                    stringKey("status"), externalIdOwnerMatch ? "success" : "error"
             ));
         } catch (ApiException e) {
             log.error("Unable to call External Application service - getExternalApplication", e);

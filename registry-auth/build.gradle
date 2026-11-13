@@ -21,21 +21,12 @@ configurations.matching { cfg ->
 	cfg.resolutionStrategy.eachDependency { DependencyResolveDetails details ->
 		if (details.requested.group == 'org.testcontainers') {
 			details.useVersion testcontainersVersion
-			details.because 'Boot 4.1.1 imports testcontainers-bom 2.0.5, which drops the postgresql/jdbc modules. Declaring 1.21.4 is not enough: highest-wins conflict resolution lets the BOM constraint pull the core artifact to 2.0.5 while the modules stay on 1.21.4, splitting the graph. Force the whole group so core and modules match.'
+			details.because 'Boot 4.1.x imports testcontainers-bom 2.0.5, which drops the postgresql/jdbc modules. Declaring 1.21.4 is not enough: highest-wins conflict resolution lets the BOM constraint pull the core artifact to 2.0.5 while the modules stay on 1.21.4, splitting the graph. Force the whole group so core and modules match.'
 		}
 	}
 }
 
 dependencies {
-	constraints {
-		// spring-cloud-gcp 8.1.1 -> cloud-sql schemas 1.29.0 declares protobuf-java
-		// 4.36.0-RC1, which outranks the stable releases in conflict resolution.
-		// Same floor as registry; yields once the BOM manages a higher stable version.
-		implementation('com.google.protobuf:protobuf-java:4.36.1') {
-			because 'Keep a release candidate (4.36.0-RC1, via com.google.cloud.sql:schemas) off the production classpath'
-		}
-	}
-
 	// mac m1 netty dns fix
 	if (osdetector.classifier == "osx-aarch_64") {
 		runtimeOnly("io.netty:netty-resolver-dns-native-macos:${nettyVersion}:${osdetector.classifier}")

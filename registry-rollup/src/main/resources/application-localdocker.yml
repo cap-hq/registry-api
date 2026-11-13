@@ -1,0 +1,67 @@
+# --------------------------------------------------------------
+# Profile for running this service inside the local Docker stack
+# (network `cap-local`, driven by `scripts/registry-stack` in this repo).
+#
+# Self-contained: activated as SPRING_PROFILES_ACTIVE=localdocker on top of
+# application.yaml only. Secrets arrive as environment variables from
+# `docker run --env-file registry-rollup/src/main/resources/secrets.yml`:
+#   REGISTRY_API_SECRET
+#
+# Do not set spring.profiles.include/active here: Spring Boot forbids it in
+# profile-specific files and the app exits at startup.
+# --------------------------------------------------------------
+server:
+  port: 8150
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          sources:
+            # Registry auth server (local Docker stack)
+            # issuer-uri must match registry-auth's app.oauth2.issuer exactly
+            # (validated as a claim string, not a network call).
+            # jwk-set-uri uses the container name so no host.docker.internal
+            # resolution is required inside containers (Colima-compatible).
+            - jwk-set-uri: http://registry-auth:8200/auth/oauth2/jwks
+              issuer-uri: http://host.docker.internal:8200/auth
+
+graphql:
+  spqr:
+    gui:
+      enabled: true
+      endpoint: /rollup/gui
+
+# Reach Registry by its container name on cap-local. api-secret is the shared
+# X-Api-Secret, sourced from the container environment.
+registry:
+  base-uri: http://registry:8100/api/graphql
+  api-secret: ${REGISTRY_API_SECRET}
+
+app:
+  line-business:
+    enabled: false
+  cors:
+    allowed-origin-patterns:
+      - http://localhost:*
+    allowed-headers:
+      - Content-Type
+      - Accept
+      - X-Requested-With
+      - Authorization
+      - X-External-User-Id
+      - traceparent
+      - tracestate
+  rollup:
+    executor:
+      user:
+        pool-size: 2
+        queue-capacity: 100
+        wait-for-tasks-to-complete-on-shutdown: false
+        await-termination-seconds: 30
+      team:
+        pool-size: 2
+        queue-capacity: 100
+        wait-for-tasks-to-complete-on-shutdown: false
+        await-termination-seconds: 30

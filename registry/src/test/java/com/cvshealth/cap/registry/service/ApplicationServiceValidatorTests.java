@@ -574,7 +574,7 @@ public class ApplicationServiceValidatorTests {
         List<UserView> managers = List.of(UserView.builder().firstName("SVP").lastName("Manager").title("SVP,Mgr").build());
         TeamRollupView teamRollupView = TeamRollupView.builder().id(1L).name(teamName).managers(managers).build();
         when(registryRollupService.getTeamRollup(teamName)).thenReturn(teamRollupView);
-        ExternalApplication externalApp = ExternalApplication.builder().cvsAppId(externalId).status("Production").svp(Person.builder().name("SVP Manager").build()).build();
+        ExternalApplication externalApp = ExternalApplication.builder().id(externalId).status("Production").svp(Person.builder().name("SVP Manager").build()).build();
         when(externalApplicationService.getExternalApplication(externalId)).thenReturn(externalApp);
         when(countAndDurationMetrics.get(METRIC_REGISTRY_VALIDATION_RESULT)).thenReturn(validationCountAndDurationMetricModel);
 
@@ -665,18 +665,20 @@ public class ApplicationServiceValidatorTests {
     }
 
     @Test
-    public void validateExternalId_noPersonalTeam() {
+    public void validateExternalId_personalTeam_allowed() {
         // given
         validator.validateExternalId = true;
-        Application request = Application.builder().teamId(1L).externalId("externalId").build();
-        Team team = Team.builder().name("Team-1").type(TeamType.PERSONAL).build();
+        String teamName = "Personal-user1";
+        String externalId = "externalId";
+        Application request = Application.builder().teamId(1L).externalId(externalId).name("app1").build();
+        TeamRollupView teamRollupView = TeamRollupView.builder().id(1L).name(teamName).build();
+        when(registryRollupService.getTeamRollup(teamName)).thenReturn(teamRollupView);
+        Team team = Team.builder().name(teamName).type(TeamType.PERSONAL).build();
 
-        // when
-        BadRequestException ex = assertThrows(BadRequestException.class, () -> validator.validateExternalId(request, team));
-        assertThat(ex.getReason()).isEqualTo(ExceptionReason.APPLICATION_EXTERNAL_ID_NOT_ALLOWED);
+        // when - personal teams are allowed to set externalId; proceeds to rollup check
+        validator.validateExternalId(request, team);
 
         // then
-        verifyNoInteractions(registryRollupService);
         verifyNoInteractions(externalApplicationService);
     }
 
@@ -747,7 +749,7 @@ public class ApplicationServiceValidatorTests {
         List<UserView> managers = List.of(UserView.builder().firstName("SVP").lastName("Manager").title("SVP,Mgr").build());
         TeamRollupView teamRollupView = TeamRollupView.builder().id(1L).name(teamName).managers(managers).build();
         when(registryRollupService.getTeamRollup(teamName)).thenReturn(teamRollupView);
-        ExternalApplication externalApp = ExternalApplication.builder().cvsAppId(externalId).build();
+        ExternalApplication externalApp = ExternalApplication.builder().id(externalId).build();
         when(externalApplicationService.getExternalApplication(externalId)).thenReturn(externalApp);
         Team team = Team.builder().name(teamName).type(TeamType.SHARED).build();
 
@@ -771,7 +773,7 @@ public class ApplicationServiceValidatorTests {
         List<UserView> managers = List.of(UserView.builder().firstName("SVP").lastName("Manager").title("SVP,Mgr").build());
         TeamRollupView teamRollupView = TeamRollupView.builder().id(1L).name(teamName).managers(managers).build();
         when(registryRollupService.getTeamRollup(teamName)).thenReturn(teamRollupView);
-        ExternalApplication externalApp = ExternalApplication.builder().cvsAppId(externalId).svp(Person.builder().name(null).build()).build();
+        ExternalApplication externalApp = ExternalApplication.builder().id(externalId).svp(Person.builder().name(null).build()).build();
         when(externalApplicationService.getExternalApplication(externalId)).thenReturn(externalApp);
         Team team = Team.builder().name(teamName).type(TeamType.SHARED).build();
 
@@ -795,7 +797,7 @@ public class ApplicationServiceValidatorTests {
         List<UserView> managers = List.of(UserView.builder().firstName("SVP").lastName("Manager").title("SVP,Mgr").build());
         TeamRollupView teamRollupView = TeamRollupView.builder().id(1L).name(teamName).managers(managers).build();
         when(registryRollupService.getTeamRollup(teamName)).thenReturn(teamRollupView);
-        ExternalApplication externalApp = ExternalApplication.builder().cvsAppId(externalId).svp(Person.builder().name("SVP Manager2").build()).build();
+        ExternalApplication externalApp = ExternalApplication.builder().id(externalId).svp(Person.builder().name("SVP Manager2").build()).build();
         when(externalApplicationService.getExternalApplication(externalId)).thenReturn(externalApp);
         when(countAndDurationMetrics.get(METRIC_REGISTRY_VALIDATION_RESULT)).thenReturn(validationCountAndDurationMetricModel);
         Team team = Team.builder().name(teamName).type(TeamType.SHARED).build();
@@ -1242,5 +1244,35 @@ public class ApplicationServiceValidatorTests {
     private ApplicationServiceValidator createValidator(Set<String> complianceTypes, List<ApplicationPriority> priorities) {
         return new ApplicationServiceValidator(complianceTypes, priorities, VALIDATION_CONSTRAINTS, registryRollupService,
                 externalApplicationService, externalResourceConstraintService, notificationService, cloudTenantService, countAndDurationMetrics);
+    }
+
+    @Test
+    public void givenExternalIdValidationOn_andNoExternalApplicationService_whenInit_thenFailsFast() {
+        ApplicationServiceValidator localValidator = new ApplicationServiceValidator(null, null, VALIDATION_CONSTRAINTS,
+                registryRollupService, null, externalResourceConstraintService, notificationService, cloudTenantService, countAndDurationMetrics);
+        localValidator.externalIdOwnerTitle = MEMBER_JOB_TITLE_LIMIT;
+        localValidator.validateExternalId = true;
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, localValidator::init);
+        assertThat(ex.getMessage()).contains("External Application Service Provider not configured");
+    }
+
+    @Test
+    public void givenExternalIdImmutable_andNoExternalApplicationService_whenInit_thenFailsFast() {
+        ApplicationServiceValidator localValidator = new ApplicationServiceValidator(null, null, VALIDATION_CONSTRAINTS,
+                registryRollupService, null, externalResourceConstraintService, notificationService, cloudTenantService, countAndDurationMetrics);
+        localValidator.externalIdOwnerTitle = MEMBER_JOB_TITLE_LIMIT;
+        localValidator.isExternalIdImmutable = true;
+
+        assertThrows(IllegalStateException.class, localValidator::init);
+    }
+
+    @Test
+    public void givenExternalIdValidationOff_andNoExternalApplicationService_whenInit_thenSucceeds() {
+        ApplicationServiceValidator localValidator = new ApplicationServiceValidator(null, null, VALIDATION_CONSTRAINTS,
+                registryRollupService, null, externalResourceConstraintService, notificationService, cloudTenantService, countAndDurationMetrics);
+        localValidator.externalIdOwnerTitle = MEMBER_JOB_TITLE_LIMIT;
+
+        assertThatCode(localValidator::init).doesNotThrowAnyException();
     }
 }

@@ -22,10 +22,10 @@ build/
 *.rar
 
 ### Secrets / local credentials — never commit ###
-**/secrets.yml
-**/secrets.yaml
+**/secrets.*
+**/secrets*
 .env
-*.env.local
+*.env*
 
 # NOTE: application-local.yml IS tracked in all three modules — it is ordinary
 # local profile config that optionally imports the untracked secrets.yml above.

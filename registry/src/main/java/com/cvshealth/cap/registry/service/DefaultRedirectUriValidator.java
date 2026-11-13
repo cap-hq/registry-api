@@ -159,11 +159,11 @@ public class DefaultRedirectUriValidator {
      * localhost, and loopback literals would not survive a domain check. A custom scheme is checked
      * only when its authority reads as a DNS name, i.e. contains a dot: the OS routes a deep link by
      * its scheme alone, so a dotted authority is a domain claim the registration cannot honour rather
-     * than a routing decision. Authority-less ({@code cvs:callback}) and single-label
-     * ({@code cvs://callback}) forms claim no domain and are left alone.
+     * than a routing decision. Authority-less ({@code example:callback}) and single-label
+     * ({@code example://callback}) forms claim no domain and are left alone.
      * <p>
      * The dot is looked for in the raw authority, not in {@link #fixedHost}: a host Java declines to
-     * parse ({@code cvsapp://evil_host.com}) still makes a domain claim, and testing the parsed host
+     * parse ({@code exampleapp://evil_host.com}) still makes a domain claim, and testing the parsed host
      * would skip the check for exactly the inputs that most need it.
      */
     private boolean domainCheckApplies(URI uri) {

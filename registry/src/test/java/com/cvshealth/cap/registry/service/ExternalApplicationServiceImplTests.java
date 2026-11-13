@@ -3,9 +3,11 @@
 
 package com.cvshealth.cap.registry.service;
 
+import com.cvshealth.cap.registry.config.ExternalApplicationApiConfig;
 import com.cvshealth.cap.registry.config.ExternalApplicationClientAuthConfig;
 import com.cvshealth.cap.registry.model.exception.ApiException;
 import com.cvshealth.cap.registry.model.externalApplication.AuthToken;
+import com.cvshealth.cap.registry.model.externalApplication.ExternalApplication;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ExternalApplicationServiceTests {
+class ExternalApplicationServiceImplTests {
 
     @Mock
     Supplier<WebClient> externalAppApiWebClient;
@@ -32,11 +35,43 @@ class ExternalApplicationServiceTests {
     @Mock
     ExternalApplicationClientAuthConfig externalAppAuthConfig;
 
-    ExternalApplicationService service;
+    ExternalApplicationApiConfig externalAppApiConfig = new ExternalApplicationApiConfig();
+
+    ExternalApplicationServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ExternalApplicationService(externalAppApiWebClient, externalAppAuthWebClient, externalAppAuthConfig);
+        service = new ExternalApplicationServiceImpl(externalAppApiWebClient, externalAppAuthWebClient, externalAppAuthConfig, externalAppApiConfig);
+    }
+
+    @Test
+    void toExternalApplication_readsIdFromConfiguredField() {
+        externalAppApiConfig.setIdField("providerAppId");
+
+        ExternalApplication app = service.toExternalApplication(Map.of(
+                "providerAppId", "APM001",
+                "id", "ignored",
+                "name", "App",
+                "acronym", "app",
+                "active", true,
+                "status", "Production",
+                "svp", Map.of("name", "SVP Manager")));
+
+        assertThat(app.getId()).isEqualTo("APM001");
+        assertThat(app.getName()).isEqualTo("App");
+        assertThat(app.getAcronym()).isEqualTo("app");
+        assertThat(app.isActive()).isTrue();
+        assertThat(app.getStatus()).isEqualTo("Production");
+        assertThat(app.getSvp().getName()).isEqualTo("SVP Manager");
+    }
+
+    @Test
+    void toExternalApplication_toleratesMissingFields() {
+        ExternalApplication app = service.toExternalApplication(Map.of("name", "App"));
+
+        assertThat(app.getId()).isNull();
+        assertThat(app.isActive()).isFalse();
+        assertThat(app.getSvp()).isNull();
     }
 
     @Test
@@ -63,7 +98,7 @@ class ExternalApplicationServiceTests {
 
     @Test
     void getBearerToken_throwsApiException_whenRetrievedAuthTokenIsNull() {
-        ExternalApplicationService serviceSpy = spy(service);
+        ExternalApplicationServiceImpl serviceSpy = spy(service);
         doReturn(null).when(serviceSpy).retrieveBearerToken();
 
         ApiException ex = assertThrows(ApiException.class,
@@ -74,7 +109,7 @@ class ExternalApplicationServiceTests {
 
     @Test
     void getBearerToken_throwsApiException_whenAccessTokenFieldIsNull() {
-        ExternalApplicationService serviceSpy = spy(service);
+        ExternalApplicationServiceImpl serviceSpy = spy(service);
         AuthToken tokenWithNullAccess = new AuthToken();
         doReturn(tokenWithNullAccess).when(serviceSpy).retrieveBearerToken();
 

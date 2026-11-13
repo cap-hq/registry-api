@@ -1,0 +1,71 @@
+# --------------------------------------------------------------
+# Profile for running Registry Auth inside the local Docker stack
+# (network `cap-local`, driven by `scripts/registry-stack`).
+#
+# Self-contained: activated as SPRING_PROFILES_ACTIVE=localdocker,bootstrap
+# on top of application.yml only. Secrets arrive as environment variables
+# from `docker run --env-file registry-auth/src/main/resources/secrets.yml`:
+#   REGISTRY_API_SECRET
+#   SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_ID
+#   SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_SECRET
+#   SPRING_CLOUD_AZURE_PROFILE_TENANT_ID
+# (the three SPRING_CLOUD_AZURE_* names bind to spring.cloud.azure.* via
+# Spring Boot's relaxed binding; nothing here needs to repeat them).
+#
+# Do not set spring.profiles.include/active here: Spring Boot forbids it in
+# profile-specific files and the app exits at startup.
+# --------------------------------------------------------------
+server:
+  port: 8200
+
+spring:
+  cloud:
+    gcp:
+      core:
+        enabled: false
+  security:
+    oauth2:
+      client:
+        registration:
+          azure-idp:
+            # Browser-facing. Must match a redirect URI registered on the Azure
+            # app, which is localhost (not host.docker.internal).
+            redirect-uri: http://localhost:8200/auth/login/oauth2/code/{registrationId}
+
+  datasource:
+    hikari:
+      jdbc-url: jdbc:postgresql://db_auth:5432/registry_auth
+      username: root
+      password: password
+
+  flyway:
+    url: jdbc:postgresql://db_auth:5432/registry_auth
+    user: root
+    password: password
+
+# Issuer advertised in the OIDC discovery document. Without this it is derived
+# from the request Host header, which varies by caller. Must be reachable from
+# the host machine (bootstrap.sh, browser PKCE flow). Docker Desktop resolves
+# host.docker.internal automatically; Colima users add it to /etc/hosts
+# (see scripts/README.md).
+app:
+  oauth2:
+    issuer: http://host.docker.internal:8200/auth
+    retrieve-user-info: false
+  ssl:
+    rotation:
+      legacy-key-id: registry-key
+  cors:
+    allowed-origin-patterns:
+      - http://localhost:*
+  job:
+    auth-event-partition:
+      cron-expression: "-"  # disabled
+
+# Reach Registry by its container name on cap-local.
+registry:
+  base-uri: http://registry:8100/api/graphql
+  api-secret: ${REGISTRY_API_SECRET}
+
+registry-auth:
+  api-secret: ${REGISTRY_API_SECRET}

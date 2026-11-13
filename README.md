@@ -29,6 +29,49 @@ Java/Spring Boot services and tools for running and exercising them locally.
 The [local-stack guide](scripts/README.md) lists additional tools and environment
 settings needed for bootstrap and interactive sign-in.
 
+### Microsoft Entra ID (Azure) app registration
+
+Registry Auth federates user sign-in to Microsoft Entra ID. Every installation,
+including a local one, needs an app registration in your own tenant. The values
+below go into `registry-auth/src/main/resources/secrets.yml` (see the
+[local-stack guide](scripts/README.md), step 1). Nothing in this repository ships
+a tenant or client of its own.
+
+In the Azure portal, under **Microsoft Entra ID → App registrations**, create or
+open the application and collect:
+
+**Overview**
+
+| Portal value | `secrets.yml` key |
+|---|---|
+| Application (client) ID | `SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_ID` |
+| Directory (tenant) ID | `SPRING_CLOUD_AZURE_PROFILE_TENANT_ID` |
+
+**Certificates & secrets**
+
+- Add a **New client secret**. Optional description pattern, which the services
+  can use to log which secret is in use: `<env>-client-secret-<YYYYMMDD>`.
+- Copy the secret **value** (shown once) → `SPRING_CLOUD_AZURE_CREDENTIAL_CLIENT_SECRET`.
+
+**Authentication**
+
+- Add the Web redirect URI `http://localhost:8200/auth/login/oauth2/code/azure-idp`.
+  For a deployed instance, add that instance's
+  `https://<host>/auth/login/oauth2/code/azure-idp` as well.
+
+**API permissions** (Microsoft Graph)
+
+| Permission | Why |
+|---|---|
+| `openid`, `profile`, `email` | sign-in and basic identity claims |
+| `User.Read.All` | full profile properties, reports and managers for all users |
+| `User.ReadBasic.All` | limited, non-sensitive profile subset for all users |
+| `Group.Read.All` | all groups, their properties and memberships in the tenant |
+| `GroupMember.Read.All` | basic group properties and memberships |
+| `Application.Read.All` | applications and service principals; used to log which app secret is in use |
+
+Grant admin consent for the tenant-wide permissions.
+
 ### Build and test
 
 From the repository root:

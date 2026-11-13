@@ -13,6 +13,10 @@ For how this fits with `registry-stack` and `bootstrap.sh`, see [`../README.md`]
 cp scripts/bruno/.env.example scripts/bruno/.env   # gitignored; holds all secrets/site values
 ```
 
+`scripts/registry-stack` also requires this file before startup and checks that its
+`REGISTRY_API_SECRET` matches the value in each module's `secrets.yml`. Keep it
+non-empty and identical everywhere.
+
 Fill in `.env` (every key is explained inline), then open `scripts/bruno` as a collection
 in Bruno and pick an environment:
 
@@ -33,7 +37,7 @@ tracked `.bru` files.
 | `OAUTH_USER_SCOPES` | root OAuth login (PKCE) | scopes your user client is allowed to request |
 | `OAUTH_CLIENT_SCOPES` | client-credentials token requests | scopes granted to the service client (may be empty) |
 | `MEMBER_EXTERNAL_ID` / `_ALIAS` / `EMAIL` | member/team requests | your identity-provider object id / alias / email |
-| `DEV_USER_EXTERNAL_ID` | optional `X-External-User-Id` header | Registry `local` profile dev bypass |
+| `DEV_USER_EXTERNAL_ID` | optional `X-External-User-Id` header | dev bypass; not enabled on the `localdocker` stack |
 | `MANAGER_EXTERNAL_ID`, `SLACK_CHANNEL_ID` | Lines of Business, Admin lookups | — |
 | `BOOTSTRAP_CLIENT_ID`, `BOOTSTRAP_TEAM_NAME` | Bootstrap folders | what `bootstrap.sh` created (defaults `registry-user-pkce` / `registry-admin`) |
 | `DEMO_CLIENT_*`, `DEMO_REDIRECT_URL` | `Bootstrap PKCE` steps 8/10, Auth client-credentials calls | the demo client step 8 registers (default `registry-user`, `USER`) |
@@ -54,9 +58,10 @@ Exceptions:
 | `Registry Auth / OAuth2 & OIDC / POST token - client credentials`, `introspect`, `revoke` | HTTP Basic `demoClientId:demoClientSecret` | token endpoint authenticates the client itself |
 | `Registry Admin / REST` | inherit (user JWT) | these endpoints check `AdminTask` on the *user*; `X-Api-Secret` yields `404 EXTERNAL_USER_NOT_FOUND` |
 
-Dev shortcut: on the Registry `local` profile you can un-comment the `X-External-User-Id`
-header in `collection.bru` (remove the `~`) to act as `DEV_USER_EXTERNAL_ID` without
-OAuth. Registry only — Auth and Rollup still need a token.
+Dev shortcut: if Registry is running with a profile that enables the `X-External-User-Id`
+dev bypass (the `localdocker` stack does not), un-comment that header in `collection.bru`
+(remove the `~`) to act as `DEV_USER_EXTERNAL_ID` without OAuth. Registry only — Auth and
+Rollup still need a token.
 
 ## Folders
 

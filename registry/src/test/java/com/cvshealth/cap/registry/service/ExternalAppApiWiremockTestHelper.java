@@ -31,7 +31,7 @@ public class ExternalAppApiWiremockTestHelper {
     }
 
     public void mockGetApplicationResponse(String externalId) {
-        apiWiremock.stubFor(get("/apm/application?queryType=CVS_APP_ID&id=" + externalId)
+        apiWiremock.stubFor(get("/application?id=" + externalId)
                 .willReturn(aResponse()
                         .withHeader("Content-Type", "application/json")
                         .withJsonBody(getJsonNode(MOCK_GET_APP_RESPONSE))));
@@ -51,16 +51,16 @@ public class ExternalAppApiWiremockTestHelper {
 
     public void verifyGetApplicationResponse(int count, String externalId) {
         apiWiremock.verify(count, RequestPatternBuilder.newRequestPattern()
-                .withUrl("/apm/application?queryType=CVS_APP_ID&id=" + externalId));
+                .withUrl("/application?id=" + externalId));
     }
 
     private static final String MOCK_GET_APP_RESPONSE = """
         {
-          "name": "CVS App 12345",
+          "name": "App 12345",
           "correlationId": "APM0012345",
           "itpmId": "12345",
-          "cvsAppId": "APM0012345",
-          "acronym": "cvsapp1234",
+          "id": "APM0012345",
+          "acronym": "app1234",
           "active": true,
           "status": "Production",
           "technicalOwner": {

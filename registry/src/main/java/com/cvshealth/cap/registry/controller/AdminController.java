@@ -32,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -54,6 +55,7 @@ public class AdminController {
     private final AuthClientExpirationCheckJobConfig authClientExpirationCheckJobConfig;
     private final AuthClientExpirationCheckNightlyJobConfig authClientExpirationCheckNightlyJobConfig;
     private final SlackService slackService;
+    @Nullable
     private final ExternalApplicationService externalApplicationService;
     private final MemberSyncService memberSyncService;
     private final MemberOffboardingService memberOffboardingService;
@@ -244,6 +246,10 @@ public class AdminController {
     @GetMapping(value = "/admin/externalApp/{externalId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasPermission(null, 'AdminTask', 'run')")
     public ResponseEntity<ExternalApplication> externalAppInfo(@PathVariable String externalId) throws ApiException {
+        if (externalApplicationService == null) {
+            // app.external-application.enabled is off
+            return ResponseEntity.notFound().build();
+        }
         ExternalApplication result = externalApplicationService.getExternalApplication(externalId);
         return result == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(result);
     }

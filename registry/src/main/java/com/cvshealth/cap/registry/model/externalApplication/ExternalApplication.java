@@ -10,7 +10,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ExternalApplication {
-    private String cvsAppId;
+    private String id;
     private String name;
     private String acronym;
     private boolean active;

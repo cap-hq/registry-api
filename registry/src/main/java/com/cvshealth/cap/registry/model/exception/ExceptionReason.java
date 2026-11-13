@@ -35,7 +35,6 @@ public enum ExceptionReason {
     APPLICATION_PRIORITY_INVALID("Application priority invalid. Valid values include %s"),
     APPLICATION_EXTERNAL_ID_INVALID("External id is invalid"),
     APPLICATION_EXTERNAL_ID_NOT_FOUND("External id not found"),
-    APPLICATION_EXTERNAL_ID_NOT_ALLOWED("External id cannot be set on PERSONAL teams"),
     APPLICATION_EXTERNAL_ID_SERVICE_ERROR("External id owner could not be verified"),
     APPLICATION_EXTERNAL_ID_CANNOT_BE_UNSET("External id cannot be unset"),
     APPLICATION_EXTERNAL_ID_IMMUTABLE("External id cannot be modified"),
@@ -134,6 +133,7 @@ public enum ExceptionReason {
     AUTH_CLIENT_REDIRECT_URI_DOMAIN_NOT_ALLOWED("Redirect uri: %s does not use an approved domain"),
     AUTH_CLIENT_REDIRECT_URI_SCHEME_NOT_ALLOWED("Redirect uri: %s uses a scheme that is not permitted"),
     AUTH_CLIENT_REDIRECT_URI_CUSTOM_SCHEME_REQUIRES_PKCE("Redirect uri: %s uses a custom URI scheme which requires client type USER_PKCE"),
+    AUTH_CLIENT_NEW_VERSION_NOT_ALLOWED("New client version is not allowed for client type USER_PKCE"),
 
 
     AUTH_API_ERROR("Error calling api service"),

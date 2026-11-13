@@ -1,4 +1,8 @@
 external-application-api:   # base-uri, auth-provider.base-uri, and auth-provider.scope are set per environment
+  # Provider wire contract; override per environment to match the provider's API.
+  lookup-uri: "/application?id={id}"   # looks an application up by external ID; {id} is expanded
+  id-field: id                      # response field carrying the external ID
+  accept: application/json          # media type the provider serves
   auth-provider:
     grant-type: client_credentials
     timeout-in-seconds: 30

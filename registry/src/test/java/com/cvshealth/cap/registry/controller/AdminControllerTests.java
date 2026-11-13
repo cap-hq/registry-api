@@ -30,6 +30,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 
@@ -71,6 +73,16 @@ public class AdminControllerTests {
     private AuthClientService authClientService;
     @Mock
     private DefaultRedirectUriValidator redirectUriValidator;
+
+    @Test
+    public void externalAppInfo_returnsNotFound_whenExternalApplicationServiceDisabled() {
+        // app.external-application.enabled is off, so the service bean is absent (null)
+        ReflectionTestUtils.setField(adminController, "externalApplicationService", null);
+
+        var response = adminController.externalAppInfo("APM0012345");
+
+        assertThat(response.getStatusCode()).isEqualTo(NOT_FOUND);
+    }
 
     @Test
     public void checkAuthClientExpirationsRequest_withNoRequestBody() {
